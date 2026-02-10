@@ -1,0 +1,75 @@
+[
+  {
+    "external_id": "0001-D-2024",
+    "title": "Régimen de promoción de energías renovables en zonas rurales",
+    "summary": "Establece beneficios impositivos para proyectos de energía solar y eólica en municipios de menos de 50.000 habitantes",
+    "type": "PROJECT",
+    "status": "IN_COMMITTEE",
+    "presented_date": "2024-03-15",
+    "source_url": "https://www.hcdn.gob.ar/proyectos/proyecto.jsp?exp=0001-D-2024",
+    "period": "2024",
+    "authors": [
+      { "external_id": "DIP-001", "role": "AUTHOR" },
+      { "external_id": "DIP-003", "role": "COAUTHOR" }
+    ],
+    "movements": [
+      { "date": "2024-03-15", "description": "Presentado en Mesa de Entradas", "from_status": null, "to_status": "PRESENTED" },
+      { "date": "2024-04-02", "description": "Girado a Comisión de Energía y Combustibles", "from_status": "PRESENTED", "to_status": "IN_COMMITTEE" }
+    ]
+  },
+  {
+    "external_id": "0042-D-2024",
+    "title": "Modificación del Código Penal - Delitos informáticos",
+    "summary": "Incorpora nuevas figuras penales para delitos cometidos mediante inteligencia artificial",
+    "type": "PROJECT",
+    "status": "PRESENTED",
+    "presented_date": "2024-05-20",
+    "source_url": "https://www.hcdn.gob.ar/proyectos/proyecto.jsp?exp=0042-D-2024",
+    "period": "2024",
+    "authors": [
+      { "external_id": "DIP-002", "role": "AUTHOR" }
+    ],
+    "movements": [
+      { "date": "2024-05-20", "description": "Presentado en Mesa de Entradas", "from_status": null, "to_status": "PRESENTED" }
+    ]
+  },
+  {
+    "external_id": "0105-D-2024",
+    "title": "Programa nacional de alfabetización digital para adultos mayores",
+    "summary": "Crea un programa federal para capacitación digital de personas mayores de 60 años",
+    "type": "PROJECT",
+    "status": "APPROVED_COMMITTEE",
+    "presented_date": "2024-02-10",
+    "source_url": "https://www.hcdn.gob.ar/proyectos/proyecto.jsp?exp=0105-D-2024",
+    "period": "2024",
+    "authors": [
+      { "external_id": "DIP-003", "role": "AUTHOR" },
+      { "external_id": "DIP-005", "role": "COAUTHOR" },
+      { "external_id": "DIP-001", "role": "COAUTHOR" }
+    ],
+    "movements": [
+      { "date": "2024-02-10", "description": "Presentado en Mesa de Entradas", "from_status": null, "to_status": "PRESENTED" },
+      { "date": "2024-03-01", "description": "Girado a Comisión de Educación", "from_status": "PRESENTED", "to_status": "IN_COMMITTEE" },
+      { "date": "2024-06-15", "description": "Dictamen de comisión favorable", "from_status": "IN_COMMITTEE", "to_status": "APPROVED_COMMITTEE" }
+    ]
+  },
+  {
+    "external_id": "0200-D-2024",
+    "title": "Declaración de interés nacional del Festival de Cine Independiente",
+    "summary": "Declara de interés nacional al Festival Internacional de Cine Independiente de Buenos Aires",
+    "type": "DECLARATION",
+    "status": "APPROVED_CHAMBER",
+    "presented_date": "2024-04-01",
+    "period": "2024",
+    "authors": [
+      { "external_id": "DIP-004", "role": "AUTHOR" },
+      { "external_id": "DIP-006", "role": "COAUTHOR" }
+    ],
+    "movements": [
+      { "date": "2024-04-01", "description": "Presentado", "from_status": null, "to_status": "PRESENTED" },
+      { "date": "2024-04-20", "description": "Girado a Comisión de Cultura", "from_status": "PRESENTED", "to_status": "IN_COMMITTEE" },
+      { "date": "2024-05-15", "description": "Aprobado en comisión", "from_status": "IN_COMMITTEE", "to_status": "APPROVED_COMMITTEE" },
+      { "date": "2024-06-01", "description": "Aprobado en sesión", "from_status": "APPROVED_COMMITTEE", "to_status": "APPROVED_CHAMBER" }
+    ]
+  }
+]

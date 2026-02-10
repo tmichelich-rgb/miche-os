@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CityOps Vial | Centro de Operaciones</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #16a34a;
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --bg-card: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #475569;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 300px 1fr 400px;
+            grid-template-rows: 56px 1fr;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 24px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .logo-icon { font-size: 24px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover { background: var(--bg-card); color: var(--text); }
+        .nav-tab.active { background: var(--primary); color: white; }
+
+        .header-stats {
+            margin-left: auto;
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.critical { background: var(--danger); animation: pulse 1.5s infinite; }
+        .stat-dot.live { background: var(--success); animation: pulse 2s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        /* Left Panel */
+        .left-panel {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .section { margin-bottom: 20px; }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Filters */
+        .filter-group { margin-bottom: 14px; }
+
+        .filter-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px;
+        }
+
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .chip {
+            padding: 5px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chip:hover { border-color: var(--primary); }
+        .chip.active { background: var(--primary); border-color: var(--primary); }
+
+        .severity-chip.critical { border-color: var(--danger); }
+        .severity-chip.critical.active { background: var(--danger); }
+        .severity-chip.high { border-color: var(--warning); }
+        .severity-chip.high.active { background: var(--warning); color: #000; }
+        .severity-chip.medium { border-color: #eab308; }
+        .severity-chip.medium.active { background: #eab308; color: #000; }
+
+        /* Incident List */
+        .incident-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .incident-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .incident-card:hover {
+            border-color: var(--primary);
+            transform: translateX(2px);
+        }
+
+        .incident-card.selected {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .incident-id {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .incident-severity {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .incident-severity.critical { background: var(--danger); }
+        .incident-severity.high { background: var(--warning); color: #000; }
+        .incident-severity.medium { background: #eab308; color: #000; }
+        .incident-severity.low { background: var(--bg-panel); }
+
+        .incident-address {
+            font-size: 12px;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .incident-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* Map */
+        .map-container {
+            position: relative;
+        }
+
+        #map { width: 100%; height: 100%; }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .panel-header .subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .panel-tab:hover { background: var(--bg-card); }
+        .panel-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* Detail View */
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .detail-item {
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .detail-item.full { grid-column: 1 / -1; }
+
+        .detail-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .detail-value.large {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        /* SLA Progress */
+        .sla-bar {
+            height: 6px;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .sla-progress {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .sla-progress.on-track { background: var(--success); }
+        .sla-progress.at-risk { background: var(--warning); }
+        .sla-progress.breached { background: var(--danger); }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        .btn-block { width: 100%; justify-content: center; }
+
+        /* Optimizer Results */
+        .optimizer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .optimizer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .optimizer-rank {
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .optimizer-route {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .optimizer-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .optimizer-detail {
+            text-align: center;
+        }
+
+        .optimizer-detail-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .optimizer-detail-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .optimizer-reason {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .kpi-value.danger { color: var(--danger); }
+        .kpi-value.success { color: var(--success); }
+        .kpi-value.warning { color: var(--warning); }
+
+        .kpi-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* Assignment Actions */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .app { grid-template-columns: 280px 1fr 350px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🛣️</span>
+                <span>CityOps Vial</span>
+            </div>
+
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-view="map">Mapa</button>
+                <button class="nav-tab" data-view="dispatch">Despacho</button>
+                <button class="nav-tab" data-view="dashboard">Dashboard</button>
+            </nav>
+
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <span class="stat-dot critical"></span>
+                    <span id="critical-count">0</span> Críticos
+                </div>
+                <div class="stat-badge">
+                    <span id="total-open">0</span> Abiertos
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-dot live"></span>
+                    <span id="crews-available">0</span> Cuadrillas
+                </div>
+            </div>
+        </header>
+
+        <!-- Left Panel -->
+        <aside class="left-panel">
+            <div class="section">
+                <div class="section-title">Filtros</div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Jurisdicción</label>
+                    <select class="filter-select" id="filter-jurisdiction">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Autoridad</label>
+                    <select class="filter-select" id="filter-authority">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Severidad</label>
+                    <div class="filter-chips">
+                        <span class="chip severity-chip critical active" data-severity="critical">Crítico</span>
+                        <span class="chip severity-chip high active" data-severity="high">Alto</span>
+                        <span class="chip severity-chip medium active" data-severity="medium">Medio</span>
+                        <span class="chip severity-chip" data-severity="low">Bajo</span>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Estado</label>
+                    <div class="filter-chips">
+                        <span class="chip active" data-status="new">Nuevo</span>
+                        <span class="chip active" data-status="validated">Validado</span>
+                        <span class="chip active" data-status="assigned">Asignado</span>
+                        <span class="chip" data-status="in_progress">En Progreso</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Incidentes (<span id="incident-count">0</span>)</div>
+                <div class="incident-list" id="incident-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Cargando...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Map -->
+        <main class="map-container">
+            <div id="map"></div>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #dc2626;"></div>
+                    <span>Crítico</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #f59e0b;"></div>
+                    <span>Alto</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #eab308;"></div>
+                    <span>Medio</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #22c55e;"></div>
+                    <span>Cuadrilla</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #3b82f6;"></div>
+                    <span>Asset Protegido</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel -->
+        <aside class="right-panel">
+            <div class="panel-header">
+                <h2 id="panel-title">Centro de Operaciones</h2>
+                <div class="subtitle" id="panel-subtitle">Seleccione un incidente o ejecute el optimizador</div>
+            </div>
+
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="detail">Detalle</button>
+                <button class="panel-tab" data-tab="optimizer">Optimizador</button>
+                <button class="panel-tab" data-tab="kpis">KPIs</button>
+            </div>
+
+            <div class="panel-content">
+                <!-- Detail Tab -->
+                <div class="tab-pane active" id="tab-detail">
+                    <div id="detail-content">
+                        <div class="loading">
+                            <p>Seleccione un incidente del mapa o la lista</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optimizer Tab -->
+                <div class="tab-pane" id="tab-optimizer">
+                    <div class="detail-section">
+                        <h3>Configuración</h3>
+                        <div class="filter-group">
+                            <label class="filter-label">Autoridad (opcional)</label>
+                            <select class="filter-select" id="optimizer-authority">
+                                <option value="">Todas las autoridades</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Horizonte temporal</label>
+                            <select class="filter-select" id="optimizer-horizon">
+                                <option value="4">4 horas</option>
+                                <option value="8" selected>8 horas</option>
+                                <option value="12">12 horas</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-block" id="run-optimizer">
+                            ▶ Ejecutar Optimización
+                        </button>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>Resultados</h3>
+                        <div id="optimizer-results">
+                            <div class="loading">
+                                <p>Configure y ejecute el optimizador</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs Tab -->
+                <div class="tab-pane" id="tab-kpis">
+                    <div id="kpis-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Cargando KPIs...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // =============================================
+        // STATE
+        // =============================================
+        const state = {
+            incidents: [],
+            crews: [],
+            jurisdictions: [],
+            authorities: [],
+            selectedIncident: null,
+            filters: {
+                jurisdiction: '',
+                authority: '',
+                severity: ['critical', 'high', 'medium'],
+                status: ['new', 'validated', 'assigned']
+            },
+            optimizerResults: null
+        };
+
+        const API = '';
+
+        // =============================================
+        // MAP
+        // =============================================
+        let deckgl;
+
+        const INITIAL_VIEW = {
+            longitude: -58.45,
+            latitude: -34.62,
+            zoom: 11,
+            pitch: 40,
+            bearing: 0
+        };
+
+        function initMap() {
+            deckgl = new deck.DeckGL({
+                container: 'map',
+                mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+                initialViewState: INITIAL_VIEW,
+                controller: true,
+                layers: [],
+                getTooltip: ({object}) => object && {
+                    html: `<div style="padding:8px;font-size:12px;">
+                        <strong>${object.address_text || object.name || 'Incidente'}</strong><br/>
+                        ${object.risk_score ? `Riesgo: ${object.risk_score}` : ''}
+                    </div>`,
+                    style: {
+                        backgroundColor: '#1e293b',
+                        color: '#f1f5f9',
+                        borderRadius: '4px'
+                    }
+                }
+            });
+        }
+
+        function getSeverityColor(severity, alpha = 220) {
+            const colors = {
+                critical: [220, 38, 38, alpha],
+                high: [245, 158, 11, alpha],
+                medium: [234, 179, 8, alpha],
+                low: [148, 163, 184, alpha]
+            };
+            return colors[severity] || colors.medium;
+        }
+
+        function updateMapLayers() {
+            const filteredIncidents = getFilteredIncidents();
+            const layers = [];
+
+            // Incidents layer
+            layers.push(new deck.ScatterplotLayer({
+                id: 'incidents',
+                data: filteredIncidents,
+                getPosition: d => [d.location.lon, d.location.lat],
+                getRadius: d => 150 + (d.risk_score || 50) * 3,
+                getFillColor: d => getSeverityColor(d.severity_estimate),
+                radiusMinPixels: 8,
+                radiusMaxPixels: 25,
+                pickable: true,
+                onClick: ({object}) => selectIncident(object)
+            }));
+
+            // Incident glow
+            layers.push(new deck.ScatterplotLayer({
+                id: 'incidents-glow',
+                data: filteredIncidents.filter(i => i.severity_estimate === 'critical'),
+                getPosition: d => [d.location.lon, d.location.lat],
+                getRadius: 400,
+                getFillColor: [220, 38, 38, 60],
+                radiusMinPixels: 20,
+                radiusMaxPixels: 40
+            }));
+
+            // Crews layer
+            layers.push(new deck.ScatterplotLayer({
+                id: 'crews',
+                data: state.crews,
+                getPosition: d => [d.location.lon, d.location.lat],
+                getRadius: 200,
+                getFillColor: d => d.status === 'available' ? [34, 197, 94, 200] : [59, 130, 246, 200],
+                radiusMinPixels: 6,
+                radiusMaxPixels: 15,
+                stroked: true,
+                lineWidthMinPixels: 2,
+                getLineColor: [255, 255, 255, 150]
+            }));
+
+            // Assignment arcs
+            if (state.optimizerResults) {
+                const arcData = state.optimizerResults.recommendations.map(r => {
+                    const incident = state.incidents.find(i => i.id === r.incident_id);
+                    const crew = state.crews.find(c => c.id === r.recommended_crew.crew_id);
+                    if (incident && crew) {
+                        return {
+                            source: [crew.location.lon, crew.location.lat],
+                            target: [incident.location.lon, incident.location.lat],
+                            rec: r
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+
+                layers.push(new deck.ArcLayer({
+                    id: 'assignments',
+                    data: arcData,
+                    getSourcePosition: d => d.source,
+                    getTargetPosition: d => d.target,
+                    getSourceColor: [34, 197, 94, 255],
+                    getTargetColor: d => getSeverityColor(d.rec.incident_summary.severity, 255),
+                    getWidth: 2,
+                    getTilt: 15
+                }));
+            }
+
+            deckgl.setProps({ layers });
+        }
+
+        // =============================================
+        // DATA LOADING
+        // =============================================
+        async function loadData() {
+            try {
+                const [incidentsRes, crewsRes, jurisdictionsRes, authoritiesRes] = await Promise.all([
+                    fetch(`${API}/api/v1/incidents?limit=200`).then(r => r.json()),
+                    fetch(`${API}/api/v1/crews`).then(r => r.json()),
+                    fetch(`${API}/api/v1/jurisdictions`).then(r => r.json()),
+                    fetch(`${API}/api/v1/authorities`).then(r => r.json())
+                ]);
+
+                state.incidents = incidentsRes.data || [];
+                state.crews = crewsRes.data || [];
+                state.jurisdictions = jurisdictionsRes.data || [];
+                state.authorities = authoritiesRes.data || [];
+
+                populateFilters();
+                updateStats();
+                renderIncidentList();
+                updateMapLayers();
+                loadKPIs();
+
+            } catch (err) {
+                console.error('Error loading data:', err);
+                showToast('Error cargando datos', 'error');
+            }
+        }
+
+        function populateFilters() {
+            const jurSelect = document.getElementById('filter-jurisdiction');
+            const authSelect = document.getElementById('filter-authority');
+            const optAuthSelect = document.getElementById('optimizer-authority');
+
+            state.jurisdictions.filter(j => j.level === 'municipal').forEach(j => {
+                jurSelect.innerHTML += `<option value="${j.id}">${j.name}</option>`;
+            });
+
+            state.authorities.forEach(a => {
+                authSelect.innerHTML += `<option value="${a.id}">${a.name}</option>`;
+                optAuthSelect.innerHTML += `<option value="${a.id}">${a.name}</option>`;
+            });
+        }
+
+        function updateStats() {
+            const open = state.incidents.filter(i => !['resolved', 'closed', 'rejected'].includes(i.status));
+            const critical = open.filter(i => i.severity_estimate === 'critical');
+            const available = state.crews.filter(c => c.can_accept);
+
+            document.getElementById('critical-count').textContent = critical.length;
+            document.getElementById('total-open').textContent = open.length;
+            document.getElementById('crews-available').textContent = available.length;
+        }
+
+        // =============================================
+        // FILTERING
+        // =============================================
+        function getFilteredIncidents() {
+            return state.incidents.filter(i => {
+                if (state.filters.jurisdiction && i.jurisdiction_id !== state.filters.jurisdiction) return false;
+                if (state.filters.authority && i.authority_id !== state.filters.authority) return false;
+                if (state.filters.severity.length && !state.filters.severity.includes(i.severity_estimate)) return false;
+                if (state.filters.status.length && !state.filters.status.includes(i.status)) return false;
+                return true;
+            });
+        }
+
+        function renderIncidentList() {
+            const filtered = getFilteredIncidents();
+            const list = document.getElementById('incident-list');
+            document.getElementById('incident-count').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="loading"><p>No hay incidentes con estos filtros</p></div>';
+                return;
+            }
+
+            list.innerHTML = filtered.slice(0, 50).map(inc => `
+                <div class="incident-card ${state.selectedIncident?.id === inc.id ? 'selected' : ''}"
+                     data-id="${inc.id}">
+                    <div class="incident-header">
+                        <span class="incident-id">${inc.id.slice(0, 8).toUpperCase()}</span>
+                        <span class="incident-severity ${inc.severity_estimate}">${inc.severity_estimate.toUpperCase()}</span>
+                    </div>
+                    <div class="incident-address">${inc.address_text || 'Sin dirección'}</div>
+                    <div class="incident-meta">
+                        <span>⚡ ${inc.risk_score?.toFixed(0) || '--'}</span>
+                        <span>📋 ${inc.report_count || 1} reportes</span>
+                        <span>⏱️ ${inc.age_hours?.toFixed(1) || '--'}h</span>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click listeners
+            list.querySelectorAll('.incident-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const incident = state.incidents.find(i => i.id === card.dataset.id);
+                    selectIncident(incident);
+                });
+            });
+        }
+
+        // =============================================
+        // INCIDENT DETAIL
+        // =============================================
+        async function selectIncident(incident) {
+            if (!incident) return;
+
+            state.selectedIncident = incident;
+
+            // Update UI
+            document.querySelectorAll('.incident-card').forEach(c => {
+                c.classList.toggle('selected', c.dataset.id === incident.id);
+            });
+
+            // Switch to detail tab
+            document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="detail"]').classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-detail').classList.add('active');
+
+            // Load full detail
+            try {
+                const res = await fetch(`${API}/api/v1/incidents/${incident.id}`);
+                const detail = await res.json();
+                renderIncidentDetail(detail);
+            } catch (err) {
+                console.error('Error loading detail:', err);
+            }
+
+            // Center map
+            deckgl.setProps({
+                initialViewState: {
+                    ...INITIAL_VIEW,
+                    longitude: incident.location.lon,
+                    latitude: incident.location.lat,
+                    zoom: 14,
+                    transitionDuration: 500
+                }
+            });
+        }
+
+        function renderIncidentDetail(incident) {
+            document.getElementById('panel-title').textContent = `Incidente ${incident.id.slice(0, 8).toUpperCase()}`;
+            document.getElementById('panel-subtitle').textContent = incident.address_text;
+
+            const sla = incident.sla_details || {};
+            const slaPercent = sla.percentage_used || 0;
+            const slaClass = sla.status === 'breached' ? 'breached' : sla.status === 'at_risk' ? 'at-risk' : 'on-track';
+
+            document.getElementById('detail-content').innerHTML = `
+                <div class="detail-section">
+                    <h3>Información General</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Tipo</div>
+                            <div class="detail-value">${incident.incident_type?.toUpperCase() || 'BACHE'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Severidad</div>
+                            <div class="detail-value" style="color: ${getSeverityHex(incident.severity_estimate)}">${incident.severity_estimate?.toUpperCase()}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Risk Score</div>
+                            <div class="detail-value large">${incident.risk_score?.toFixed(0) || '--'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Confianza</div>
+                            <div class="detail-value">${((incident.confidence_score || 0) * 100).toFixed(0)}%</div>
+                        </div>
+                        <div class="detail-item full">
+                            <div class="detail-label">Reportes</div>
+                            <div class="detail-value">${incident.report_count || 1} reportes desde ${formatDate(incident.first_reported_at)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Estado y SLA</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Estado</div>
+                            <div class="detail-value">${translateStatus(incident.status)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">SLA</div>
+                            <div class="detail-value" style="color: ${slaClass === 'breached' ? '#dc2626' : slaClass === 'at-risk' ? '#f59e0b' : '#16a34a'}">${translateSLA(sla.status)}</div>
+                        </div>
+                        <div class="detail-item full">
+                            <div class="detail-label">Tiempo restante: ${sla.remaining_hours?.toFixed(1) || '--'}h</div>
+                            <div class="sla-bar">
+                                <div class="sla-progress ${slaClass}" style="width: ${Math.min(100, slaPercent)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Jurisdicción</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item full">
+                            <div class="detail-label">Jurisdicción</div>
+                            <div class="detail-value">${incident.jurisdiction?.name || incident.jurisdiction_name || 'Sin asignar'}</div>
+                        </div>
+                        <div class="detail-item full">
+                            <div class="detail-label">Autoridad Responsable</div>
+                            <div class="detail-value">${incident.authority?.name || incident.authority_name || 'Sin asignar'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${incident.current_assignment ? `
+                <div class="detail-section">
+                    <h3>Asignación Actual</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Cuadrilla</div>
+                            <div class="detail-value">${incident.current_assignment.crew?.name || 'Sin asignar'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">ETA</div>
+                            <div class="detail-value">${incident.current_assignment.eta_minutes} min</div>
+                        </div>
+                        <div class="detail-item full">
+                            <div class="detail-label">Estado</div>
+                            <div class="detail-value">${translateAssignmentStatus(incident.current_assignment.status)}</div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                <div class="action-buttons">
+                    ${incident.status === 'new' ? `<button class="btn btn-primary" onclick="validateIncident('${incident.id}')">✓ Validar</button>` : ''}
+                    ${incident.status === 'validated' ? `<button class="btn btn-primary" onclick="showAssignModal('${incident.id}')">📋 Asignar</button>` : ''}
+                    <button class="btn btn-secondary" onclick="viewOnMap('${incident.id}')">🗺️ Ver en Mapa</button>
+                </div>
+            `;
+        }
+
+        // =============================================
+        // OPTIMIZER
+        // =============================================
+        async function runOptimizer() {
+            const btn = document.getElementById('run-optimizer');
+            btn.textContent = '⏳ Optimizando...';
+            btn.disabled = true;
+
+            try {
+                const authority = document.getElementById('optimizer-authority').value;
+                const horizon = document.getElementById('optimizer-horizon').value;
+
+                const res = await fetch(`${API}/api/v1/assignments/optimize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        authority_id: authority || null,
+                        time_horizon_hours: parseInt(horizon),
+                        prioritize_critical: true
+                    })
+                });
+
+                const data = await res.json();
+                state.optimizerResults = data;
+                renderOptimizerResults(data);
+                updateMapLayers();
+
+            } catch (err) {
+                console.error('Optimizer error:', err);
+                showToast('Error en optimización', 'error');
+            } finally {
+                btn.textContent = '▶ Ejecutar Optimización';
+                btn.disabled = false;
+            }
+        }
+
+        function renderOptimizerResults(data) {
+            const container = document.getElementById('optimizer-results');
+
+            if (!data.recommendations || data.recommendations.length === 0) {
+                container.innerHTML = '<div class="loading"><p>No hay asignaciones recomendadas</p></div>';
+                return;
+            }
+
+            const stats = data.optimization_stats;
+
+            container.innerHTML = `
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-value">${stats.total_assigned}</div>
+                        <div class="kpi-label">Asignados</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-value">${stats.solve_time_ms.toFixed(0)}ms</div>
+                        <div class="kpi-label">Tiempo</div>
+                    </div>
+                </div>
+
+                ${data.recommendations.map(r => `
+                    <div class="optimizer-card">
+                        <div class="optimizer-header">
+                            <span class="optimizer-rank">${r.optimizer_reasoning.priority_rank || '?'}</span>
+                            <div class="optimizer-route">
+                                <span>🚛 ${r.recommended_crew.crew_name}</span>
+                                <span style="color: var(--text-muted)">→</span>
+                                <span style="color: ${getSeverityHex(r.incident_summary.severity)}">🔧 ${r.incident_summary.address?.slice(0, 25) || 'Incidente'}</span>
+                            </div>
+                        </div>
+                        <div class="optimizer-details">
+                            <div class="optimizer-detail">
+                                <div class="optimizer-detail-value">${r.recommended_crew.eta_minutes}</div>
+                                <div class="optimizer-detail-label">ETA (min)</div>
+                            </div>
+                            <div class="optimizer-detail">
+                                <div class="optimizer-detail-value">${r.incident_summary.risk_score?.toFixed(0) || '--'}</div>
+                                <div class="optimizer-detail-label">Riesgo</div>
+                            </div>
+                            <div class="optimizer-detail">
+                                <div class="optimizer-detail-value">${r.final_score.toFixed(0)}</div>
+                                <div class="optimizer-detail-label">Score</div>
+                            </div>
+                        </div>
+                        <div class="optimizer-reason">${r.optimizer_reasoning.explanation || ''}</div>
+                        <div class="action-buttons">
+                            <button class="btn btn-success btn-block" onclick="applyAssignment('${r.incident_id}', '${r.recommended_crew.crew_id}')">
+                                ✓ Aplicar
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+
+                ${data.unassignable_incidents.length > 0 ? `
+                    <div class="detail-section">
+                        <h3>Sin Asignar (${data.unassignable_incidents.length})</h3>
+                        ${data.unassignable_incidents.map(u => `
+                            <div style="font-size:11px;padding:6px;background:var(--bg-card);border-radius:4px;margin-bottom:4px;">
+                                ${u.incident_id.slice(0, 8)}: ${u.reason}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                <button class="btn btn-primary btn-block" onclick="applyAllAssignments()">
+                    Aplicar Todas las Asignaciones
+                </button>
+            `;
+        }
+
+        async function applyAssignment(incidentId, crewId) {
+            try {
+                await fetch(`${API}/api/v1/assignments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incident_id: incidentId, crew_id: crewId })
+                });
+
+                showToast('Asignación creada', 'success');
+                loadData();
+            } catch (err) {
+                showToast('Error creando asignación', 'error');
+            }
+        }
+
+        async function applyAllAssignments() {
+            if (!state.optimizerResults) return;
+
+            for (const r of state.optimizerResults.recommendations) {
+                await applyAssignment(r.incident_id, r.recommended_crew.crew_id);
+            }
+        }
+
+        // =============================================
+        // KPIs
+        // =============================================
+        async function loadKPIs() {
+            try {
+                const res = await fetch(`${API}/api/v1/analytics/kpis`);
+                const kpis = await res.json();
+                renderKPIs(kpis);
+            } catch (err) {
+                console.error('Error loading KPIs:', err);
+            }
+        }
+
+        function renderKPIs(kpis) {
+            document.getElementById('kpis-content').innerHTML = `
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-value">${kpis.total_incidents}</div>
+                        <div class="kpi-label">Total Incidentes</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-value success">${kpis.total_resolved}</div>
+                        <div class="kpi-label">Resueltos</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-value ${kpis.sla_compliance_rate >= 0.7 ? 'success' : 'warning'}">${(kpis.sla_compliance_rate * 100).toFixed(0)}%</div>
+                        <div class="kpi-label">SLA Cumplido</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-value danger">${kpis.backlog_over_24h}</div>
+                        <div class="kpi-label">Backlog >24h</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Por Severidad</h3>
+                    ${Object.entries(kpis.by_severity || {}).map(([sev, data]) => `
+                        <div style="display:flex;justify-content:space-between;padding:8px;background:var(--bg-card);border-radius:4px;margin-bottom:4px;">
+                            <span style="color:${getSeverityHex(sev)}">${sev.toUpperCase()}</span>
+                            <span>${data.count} incidentes | ${data.avg_resolution_hours?.toFixed(1) || '--'}h promedio</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="detail-section">
+                    <h3>Por Autoridad</h3>
+                    ${Object.entries(kpis.by_authority || {}).map(([id, data]) => `
+                        <div style="padding:8px;background:var(--bg-card);border-radius:4px;margin-bottom:4px;">
+                            <div style="font-weight:500;margin-bottom:4px;">${data.authority_name}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">
+                                ${data.incidents} incidentes | ${(data.sla_compliance * 100).toFixed(0)}% SLA
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="detail-section">
+                    <h3>Tiempos Promedio</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">Resolución Total</div>
+                            <div class="detail-value">${kpis.avg_total_resolution_hours?.toFixed(1) || '--'}h</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Tasa Resolución</div>
+                            <div class="detail-value">${(kpis.resolution_rate * 100).toFixed(0)}%</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // =============================================
+        // ACTIONS
+        // =============================================
+        async function validateIncident(id) {
+            try {
+                await fetch(`${API}/api/v1/incidents/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'validated' })
+                });
+                showToast('Incidente validado', 'success');
+                loadData();
+            } catch (err) {
+                showToast('Error', 'error');
+            }
+        }
+
+        function viewOnMap(id) {
+            const incident = state.incidents.find(i => i.id === id);
+            if (incident) {
+                deckgl.setProps({
+                    initialViewState: {
+                        ...INITIAL_VIEW,
+                        longitude: incident.location.lon,
+                        latitude: incident.location.lat,
+                        zoom: 15,
+                        transitionDuration: 500
+                    }
+                });
+            }
+        }
+
+        // =============================================
+        // UTILS
+        // =============================================
+        function getSeverityHex(severity) {
+            const colors = { critical: '#dc2626', high: '#f59e0b', medium: '#eab308', low: '#94a3b8' };
+            return colors[severity] || colors.medium;
+        }
+
+        function translateStatus(status) {
+            const map = {
+                new: 'Nuevo',
+                validated: 'Validado',
+                assigned: 'Asignado',
+                in_progress: 'En Progreso',
+                resolved: 'Resuelto',
+                closed: 'Cerrado',
+                rejected: 'Rechazado'
+            };
+            return map[status] || status;
+        }
+
+        function translateSLA(status) {
+            const map = { on_track: 'En tiempo', at_risk: 'En riesgo', breached: 'Vencido', met: 'Cumplido', unknown: 'Desconocido' };
+            return map[status] || status;
+        }
+
+        function translateAssignmentStatus(status) {
+            const map = { pending: 'Pendiente', accepted: 'Aceptado', en_route: 'En camino', on_site: 'En sitio', completed: 'Completado' };
+            return map[status] || status;
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '--';
+            const d = new Date(iso);
+            return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✓' : '✗'}</span> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // =============================================
+        // EVENT LISTENERS
+        // =============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadData();
+
+            // Nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    // Could switch views here
+                });
+            });
+
+            // Panel tabs
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                });
+            });
+
+            // Filters
+            document.getElementById('filter-jurisdiction').addEventListener('change', e => {
+                state.filters.jurisdiction = e.target.value;
+                renderIncidentList();
+                updateMapLayers();
+            });
+
+            document.getElementById('filter-authority').addEventListener('change', e => {
+                state.filters.authority = e.target.value;
+                renderIncidentList();
+                updateMapLayers();
+            });
+
+            // Severity chips
+            document.querySelectorAll('.severity-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    chip.classList.toggle('active');
+                    const active = [...document.querySelectorAll('.severity-chip.active')].map(c => c.dataset.severity);
+                    state.filters.severity = active;
+                    renderIncidentList();
+                    updateMapLayers();
+                });
+            });
+
+            // Status chips
+            document.querySelectorAll('.chip[data-status]').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    chip.classList.toggle('active');
+                    const active = [...document.querySelectorAll('.chip[data-status].active')].map(c => c.dataset.status);
+                    state.filters.status = active;
+                    renderIncidentList();
+                    updateMapLayers();
+                });
+            });
+
+            // Optimizer button
+            document.getElementById('run-optimizer').addEventListener('click', runOptimizer);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,624 @@
+// Congreso Abierto — Prisma Schema
+// MVP: Cámara de Diputados
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Parliamentary Entities
+// ──────────────────────────────────────────────
+
+model Province {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique // e.g. "CABA", "BA", "COR"
+
+  legislators Legislator[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("provinces")
+}
+
+model Block {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  shortName   String?  @map("short_name")
+  externalId  String?  @unique @map("external_id")
+
+  legislators Legislator[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("blocks")
+}
+
+model Commission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  externalId  String?  @unique @map("external_id")
+  chamber     Chamber  @default(DIPUTADOS)
+
+  members LegislatorCommission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("commissions")
+}
+
+model Legislator {
+  id            String   @id @default(cuid())
+  externalId    String   @unique @map("external_id") // ID from official source
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  fullName      String   @map("full_name") // computed for display
+  photoUrl      String?  @map("photo_url")
+  email         String?
+  chamber       Chamber  @default(DIPUTADOS)
+  termStart     DateTime? @map("term_start")
+  termEnd       DateTime? @map("term_end")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  provinceId    String   @map("province_id")
+  province      Province @relation(fields: [provinceId], references: [id])
+
+  blockId       String   @map("block_id")
+  block         Block    @relation(fields: [blockId], references: [id])
+
+  commissions   LegislatorCommission[]
+  attendances   Attendance[]
+  voteResults   VoteResult[]
+  billAuthors   BillAuthor[]
+  metrics       LegislatorMetric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provinceId])
+  @@index([blockId])
+  @@index([isActive])
+  @@index([chamber, isActive])
+  @@map("legislators")
+}
+
+model LegislatorCommission {
+  id            String   @id @default(cuid())
+  role          CommissionRole @default(MEMBER)
+
+  legislatorId  String   @map("legislator_id")
+  legislator    Legislator @relation(fields: [legislatorId], references: [id])
+
+  commissionId  String   @map("commission_id")
+  commission    Commission @relation(fields: [commissionId], references: [id])
+
+  startDate     DateTime? @map("start_date")
+  endDate       DateTime? @map("end_date")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([legislatorId, commissionId])
+  @@map("legislator_commissions")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Sessions & Attendance
+// ──────────────────────────────────────────────
+
+model Session {
+  id            String   @id @default(cuid())
+  externalId    String?  @unique @map("external_id")
+  number        Int?
+  date          DateTime
+  title         String?
+  type          SessionType @default(ORDINARY)
+  chamber       Chamber  @default(DIPUTADOS)
+  period        String?  // e.g. "2024" or "142-OE"
+
+  attendances   Attendance[]
+  voteEvents    VoteEvent[]
+
+  sourceRefId   String?  @map("source_ref_id")
+  sourceRef     SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([chamber, date])
+  @@map("sessions")
+}
+
+model Attendance {
+  id            String   @id @default(cuid())
+  status        AttendanceStatus
+
+  legislatorId  String   @map("legislator_id")
+  legislator    Legislator @relation(fields: [legislatorId], references: [id])
+
+  sessionId     String   @map("session_id")
+  session       Session  @relation(fields: [sessionId], references: [id])
+
+  sourceRefId   String?  @map("source_ref_id")
+  sourceRef     SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([legislatorId, sessionId])
+  @@index([sessionId])
+  @@map("attendances")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Votes
+// ──────────────────────────────────────────────
+
+model VoteEvent {
+  id            String   @id @default(cuid())
+  externalId    String?  @unique @map("external_id")
+  title         String
+  description   String?
+  date          DateTime
+  result        VoteOutcome? // APPROVED, REJECTED, etc.
+  affirmative   Int      @default(0)
+  negative      Int      @default(0)
+  abstention    Int      @default(0)
+  absent        Int      @default(0)
+
+  sessionId     String   @map("session_id")
+  session       Session  @relation(fields: [sessionId], references: [id])
+
+  results       VoteResult[]
+  feedPosts     FeedPost[]
+
+  sourceRefId   String?  @map("source_ref_id")
+  sourceRef     SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([sessionId])
+  @@map("vote_events")
+}
+
+model VoteResult {
+  id            String   @id @default(cuid())
+  vote          VoteValue
+
+  legislatorId  String   @map("legislator_id")
+  legislator    Legislator @relation(fields: [legislatorId], references: [id])
+
+  voteEventId   String   @map("vote_event_id")
+  voteEvent     VoteEvent @relation(fields: [voteEventId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([legislatorId, voteEventId])
+  @@index([voteEventId])
+  @@map("vote_results")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Bills (Proyectos de Ley)
+// ──────────────────────────────────────────────
+
+model Bill {
+  id              String   @id @default(cuid())
+  externalId      String   @unique @map("external_id") // expediente number
+  title           String
+  summary         String?
+  type            BillType @default(PROJECT)
+  status          BillStatus @default(PRESENTED)
+  presentedDate   DateTime? @map("presented_date")
+  chamber         Chamber  @default(DIPUTADOS)
+  sourceUrl       String?  @map("source_url") // link to official page
+  fullTextUrl     String?  @map("full_text_url")
+  period          String?  // parliamentary period
+
+  authors         BillAuthor[]
+  movements       BillMovement[]
+  feedPosts       FeedPost[]
+
+  sourceRefId     String?  @map("source_ref_id")
+  sourceRef       SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([presentedDate])
+  @@index([chamber, status])
+  @@map("bills")
+}
+
+model BillAuthor {
+  id            String   @id @default(cuid())
+  role          AuthorRole @default(AUTHOR)
+
+  billId        String   @map("bill_id")
+  bill          Bill     @relation(fields: [billId], references: [id])
+
+  legislatorId  String   @map("legislator_id")
+  legislator    Legislator @relation(fields: [legislatorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([billId, legislatorId])
+  @@index([legislatorId])
+  @@map("bill_authors")
+}
+
+model BillMovement {
+  id            String   @id @default(cuid())
+  date          DateTime
+  description   String
+  fromStatus    BillStatus? @map("from_status")
+  toStatus      BillStatus? @map("to_status")
+  chamber       Chamber?
+  committee     String?   // committee name if relevant
+  orderIndex    Int       @default(0) @map("order_index")
+
+  billId        String   @map("bill_id")
+  bill          Bill     @relation(fields: [billId], references: [id])
+
+  sourceRefId   String?  @map("source_ref_id")
+  sourceRef     SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([billId, orderIndex])
+  @@index([date])
+  @@map("bill_movements")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Metrics (Computed)
+// ──────────────────────────────────────────────
+
+model LegislatorMetric {
+  id                    String   @id @default(cuid())
+  period                String   // e.g. "2024", "2024-H1"
+
+  billsAuthored         Int      @default(0) @map("bills_authored")
+  billsCosigned         Int      @default(0) @map("bills_cosigned")
+  billsWithAdvancement  Int      @default(0) @map("bills_with_advancement")
+  advancementRate       Float    @default(0) @map("advancement_rate") // bills_with_advancement / bills_authored
+
+  sessionsTotal         Int      @default(0) @map("sessions_total")
+  sessionsPresent       Int      @default(0) @map("sessions_present")
+  attendanceRate        Float    @default(0) @map("attendance_rate") // sessions_present / sessions_total
+
+  voteEventsTotal       Int      @default(0) @map("vote_events_total")
+  voteEventsParticipated Int     @default(0) @map("vote_events_participated")
+  voteParticipationRate Float    @default(0) @map("vote_participation_rate")
+
+  commissionsCount      Int      @default(0) @map("commissions_count")
+
+  monthsInOffice        Float    @default(0) @map("months_in_office")
+  normalizedProductivity Float   @default(0) @map("normalized_productivity") // bills per month
+
+  legislatorId  String   @map("legislator_id")
+  legislator    Legislator @relation(fields: [legislatorId], references: [id])
+
+  computedAt DateTime @default(now()) @map("computed_at")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([legislatorId, period])
+  @@index([period])
+  @@map("legislator_metrics")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Feed & Social
+// ──────────────────────────────────────────────
+
+model FeedPost {
+  id            String   @id @default(cuid())
+  type          FeedPostType
+  title         String
+  body          String
+  payload       Json?    // event snapshot
+
+  entityType    String?  @map("entity_type") // "bill", "vote_event", "session"
+  entityId      String?  @map("entity_id")
+
+  // Optional direct relations for common entities
+  billId        String?  @map("bill_id")
+  bill          Bill?    @relation(fields: [billId], references: [id])
+
+  voteEventId   String?  @map("vote_event_id")
+  voteEvent     VoteEvent? @relation(fields: [voteEventId], references: [id])
+
+  // Denormalized for filtering
+  blockId       String?  @map("block_id")
+  provinceId    String?  @map("province_id")
+  tags          String[] @default([])
+
+  isAutoGenerated Boolean @default(true) @map("is_auto_generated")
+
+  sourceRefId   String?  @map("source_ref_id")
+  sourceRef     SourceRef? @relation(fields: [sourceRefId], references: [id])
+
+  comments      Comment[]
+  reactions     Reaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, createdAt(sort: Desc)])
+  @@index([blockId, createdAt(sort: Desc)])
+  @@index([provinceId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("feed_posts")
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  body        String
+  isHidden    Boolean  @default(false) @map("is_hidden")
+
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+
+  feedPostId  String   @map("feed_post_id")
+  feedPost    FeedPost @relation(fields: [feedPostId], references: [id])
+
+  parentId    String?  @map("parent_id") // for threading
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+
+  reports     Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([feedPostId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Reaction {
+  id          String   @id @default(cuid())
+  type        ReactionType
+
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+
+  feedPostId  String   @map("feed_post_id")
+  feedPost    FeedPost @relation(fields: [feedPostId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, feedPostId, type])
+  @@index([feedPostId])
+  @@map("reactions")
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reason      ReportReason
+  details     String?
+  status      ReportStatus @default(PENDING)
+
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+
+  commentId   String?  @map("comment_id")
+  comment     Comment? @relation(fields: [commentId], references: [id])
+
+  reviewedAt  DateTime? @map("reviewed_at")
+  reviewedBy  String?   @map("reviewed_by")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([commentId])
+  @@map("reports")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Users & Auth
+// ──────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String?  @map("display_name")
+  avatarUrl     String?  @map("avatar_url")
+  role          UserRole @default(CITIZEN)
+  isActive      Boolean  @default(true) @map("is_active")
+  strikes       Int      @default(0)
+
+  comments      Comment[]
+  reactions     Reaction[]
+  reports       Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// DOMAIN: Data Pipeline / Traceability
+// ──────────────────────────────────────────────
+
+model SourceRef {
+  id            String   @id @default(cuid())
+  url           String
+  fetchedAt     DateTime @map("fetched_at")
+  checksum      String?  // SHA-256 of raw content
+  rawLocation   String?  @map("raw_location") // path to raw file
+  sourceType    String   @map("source_type") // "ckan", "csv", "html"
+  dataType      String   @map("data_type") // "legislators", "bills", "votes", "attendance"
+
+  sessions      Session[]
+  attendances   Attendance[]
+  voteEvents    VoteEvent[]
+  bills         Bill[]
+  billMovements BillMovement[]
+  feedPosts     FeedPost[]
+
+  ingestionRunId String? @map("ingestion_run_id")
+  ingestionRun   IngestionRun? @relation(fields: [ingestionRunId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([url, fetchedAt])
+  @@index([dataType])
+  @@map("source_refs")
+}
+
+model IngestionRun {
+  id                String   @id @default(cuid())
+  sourceName        String   @map("source_name") // adapter identifier
+  dataType          String   @map("data_type")
+  status            JobStatus @default(RUNNING)
+  startedAt         DateTime @default(now()) @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  recordsProcessed  Int      @default(0) @map("records_processed")
+  recordsCreated    Int      @default(0) @map("records_created")
+  recordsUpdated    Int      @default(0) @map("records_updated")
+  recordsSkipped    Int      @default(0) @map("records_skipped")
+  errors            Int      @default(0)
+  errorDetails      Json?    @map("error_details")
+
+  sourceRefs SourceRef[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startedAt(sort: Desc)])
+  @@map("ingestion_runs")
+}
+
+// ──────────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────────
+
+enum Chamber {
+  DIPUTADOS
+  SENADO
+}
+
+enum CommissionRole {
+  PRESIDENT
+  VICE_PRESIDENT
+  SECRETARY
+  MEMBER
+}
+
+enum SessionType {
+  ORDINARY
+  EXTRAORDINARY
+  SPECIAL
+  PREPARATORY
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  ON_LEAVE   // con licencia
+  UNAVAILABLE // data not available
+}
+
+enum VoteOutcome {
+  APPROVED
+  REJECTED
+  TIED
+  NO_QUORUM
+  WITHDRAWN
+}
+
+enum VoteValue {
+  AFFIRMATIVE
+  NEGATIVE
+  ABSTENTION
+  ABSENT
+}
+
+enum BillType {
+  PROJECT        // proyecto de ley
+  RESOLUTION     // proyecto de resolución
+  DECLARATION    // proyecto de declaración
+  COMMUNICATION  // proyecto de comunicación
+  OTHER
+}
+
+enum BillStatus {
+  PRESENTED
+  IN_COMMITTEE
+  WITH_OPINION
+  APPROVED_COMMITTEE
+  FLOOR_VOTE
+  APPROVED_CHAMBER
+  SENT_TO_OTHER_CHAMBER
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+  ARCHIVED
+}
+
+enum AuthorRole {
+  AUTHOR
+  COAUTHOR
+}
+
+enum FeedPostType {
+  BILL_CREATED
+  BILL_MOVEMENT
+  VOTE_RESULT
+  ATTENDANCE_RECORD
+}
+
+enum ReactionType {
+  INFORMATIVE   // "me informó"
+  IMPORTANT     // "es importante"
+  CONCERNING    // "me preocupa"
+  POSITIVE      // "positivo"
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  MISINFORMATION
+  DOXXING
+  THREAT
+  OFF_TOPIC
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED_REMOVED
+  RESOLVED_KEPT
+  DISMISSED
+}
+
+enum UserRole {
+  CITIZEN
+  MODERATOR
+  ADMIN
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  RETRYING
+}

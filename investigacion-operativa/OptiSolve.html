@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INVOP AI — Investigación Operativa Inteligente</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--p:#6C3CE1;--pl:#8B5CF6;--ac:#06D6A0;--bg:#0F0F1A;--bg2:#1A1A2E;--card:#22223A;--card2:#2A2A44;--tx:#E8E8F0;--ts:#9898B0;--bd:#33334D;--ok:#06D6A0;--wr:#FFD166;--dn:#EF476F;--glow:0 0 20px rgba(108,60,225,.25);--sh:0 2px 8px rgba(0,0,0,.3);--shl:0 8px 32px rgba(0,0,0,.4);--radius:16px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);height:100vh;overflow:hidden}
+body.landing-mode{overflow-y:auto;height:auto}
+
+/* ─── LANDING PAGE ─── */
+.landing{min-height:100vh;position:relative;z-index:100}
+.app-wrap{display:flex;flex-direction:column;height:100vh;opacity:0;pointer-events:none;transition:opacity .6s ease}
+body.app-mode .landing{display:none}
+body.app-mode .app-wrap{opacity:1;pointer-events:all}
+
+/* Landing hero */
+.land-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;position:relative;overflow:hidden}
+.land-hero::before{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(108,60,225,.15),transparent 70%);top:-100px;right:-100px;pointer-events:none}
+.land-hero::after{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(6,214,160,.1),transparent 70%);bottom:-100px;left:-100px;pointer-events:none}
+.land-hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:800;line-height:1.15;margin-bottom:1rem;position:relative}
+.land-hero h1 span{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.land-sub{font-size:clamp(.95rem,2vw,1.2rem);color:var(--ts);max-width:600px;line-height:1.7;margin-bottom:2.5rem;position:relative}
+.scroll-hint{position:absolute;bottom:2rem;animation:float 2s ease-in-out infinite;cursor:pointer;color:var(--ts);font-size:.8rem;display:flex;flex-direction:column;align-items:center;gap:.3rem}
+.scroll-hint svg{width:24px;height:24px;stroke:var(--ac);stroke-width:2;fill:none}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+/* Landing sections */
+.land-section{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:4rem 2rem;position:relative}
+.land-section:nth-child(even){background:var(--bg2)}
+.land-content{max-width:900px;width:100%}
+.land-content h2{font-size:clamp(1.5rem,3.5vw,2.2rem);font-weight:800;margin-bottom:1rem;line-height:1.2}
+.land-content h2 span{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.land-content>p{color:var(--ts);font-size:clamp(.9rem,1.5vw,1.05rem);line-height:1.7;margin-bottom:2rem;max-width:650px}
+
+/* 3 pillars grid */
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:1.5rem}
+.pillar{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.8rem 1.5rem;position:relative;overflow:hidden;transition:all .35s}
+.pillar::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p),var(--ac));transform:scaleX(0);transition:transform .35s;transform-origin:left}
+.pillar:hover{border-color:var(--pl);transform:translateY(-4px);box-shadow:var(--glow)}.pillar:hover::before{transform:scaleX(1)}
+.pillar-icon{font-size:2.2rem;margin-bottom:.8rem;display:block}
+.pillar h3{font-size:1rem;font-weight:700;margin-bottom:.5rem;color:var(--tx)}
+.pillar p{font-size:.85rem;color:var(--ts);line-height:1.6}
+
+/* 3 questions */
+.questions{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:1.5rem}
+.q-card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.8rem 1.5rem;position:relative;transition:all .35s}
+.q-card::after{content:'';position:absolute;inset:0;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--ac));opacity:0;transition:opacity .35s;z-index:0}
+.q-card:hover{transform:translateY(-4px);box-shadow:var(--glow)}.q-card:hover::after{opacity:.06}
+.q-card>*{position:relative;z-index:1}
+.q-num{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:.5rem}
+.q-card h3{font-size:.95rem;font-weight:700;margin-bottom:.5rem;color:var(--tx);line-height:1.3}
+.q-card p{font-size:.82rem;color:var(--ts);line-height:1.6}
+.q-tag{display:inline-block;margin-top:.7rem;padding:.2rem .6rem;border-radius:2rem;font-size:.7rem;font-weight:600;border:1px solid var(--bd);color:var(--ac)}
+
+/* Money impact section */
+.impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:1.5rem}
+.impact-card{text-align:center;padding:2rem 1.5rem;background:var(--card);border:1px solid var(--bd);border-radius:16px;transition:all .35s}
+.impact-card:hover{transform:translateY(-4px);border-color:var(--ac);box-shadow:0 0 30px rgba(6,214,160,.15)}
+.impact-num{font-size:clamp(1.8rem,3vw,2.5rem);font-weight:800;background:linear-gradient(135deg,var(--ac),var(--pl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.3rem}
+.impact-card h4{font-size:.85rem;font-weight:600;margin-bottom:.3rem}.impact-card p{font-size:.78rem;color:var(--ts);line-height:1.5}
+
+/* CTA section */
+.land-cta{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem 2rem;background:var(--bg2);position:relative;overflow:hidden}
+.land-cta::before{content:'';position:absolute;width:100%;height:100%;background:radial-gradient(ellipse at center,rgba(108,60,225,.08),transparent 60%);pointer-events:none}
+.land-cta h2{font-size:clamp(1.5rem,3.5vw,2.2rem);font-weight:800;margin-bottom:.6rem;position:relative}
+.land-cta p{color:var(--ts);font-size:1rem;margin-bottom:2rem;max-width:500px;position:relative;line-height:1.6}
+.cta-btn{padding:1rem 2.5rem;background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border:none;border-radius:14px;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;letter-spacing:.3px}
+.cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--ac),var(--pl));opacity:0;transition:opacity .3s}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(108,60,225,.4)}.cta-btn:hover::before{opacity:.3}
+.cta-btn span{position:relative;z-index:1}
+
+/* From → To transformation cards */
+.fromto-stack{display:flex;flex-direction:column;gap:2rem;margin-top:1.5rem}
+.fromto-row{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center}
+.fromto-card{border-radius:16px;padding:1.5rem;position:relative;overflow:hidden;transition:all .35s}
+.fromto-card.from{background:var(--card);border:1px solid var(--bd)}
+.fromto-card.to{background:linear-gradient(135deg,rgba(108,60,225,.08),rgba(6,214,160,.08));border:1px solid rgba(6,214,160,.2)}
+.fromto-card:hover{transform:translateY(-2px)}
+.fromto-card.from:hover{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.fromto-card.to:hover{box-shadow:var(--glow)}
+.fromto-label{font-size:.6rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+.fromto-card.from .fromto-label{color:var(--dn)}
+.fromto-card.to .fromto-label{color:var(--ac)}
+.fromto-formula{font-family:'Courier New',monospace;font-size:.78rem;color:var(--ts);line-height:1.8;white-space:pre-wrap;word-break:break-word}
+.fromto-formula .fn{color:var(--pl)}.fromto-formula .op{color:var(--dn)}.fromto-formula .var{color:var(--wr)}
+.fromto-natural{font-size:.88rem;color:var(--tx);line-height:1.7;font-style:italic}
+.fromto-natural em{font-style:normal;color:var(--ac);font-weight:600}
+.fromto-arrow{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--card);border:1px solid var(--bd);color:var(--ac);font-size:1.2rem;flex-shrink:0}
+.fromto-tag{display:inline-block;margin-top:.6rem;padding:.15rem .5rem;border-radius:2rem;font-size:.65rem;font-weight:600}
+.fromto-card.from .fromto-tag{background:rgba(239,71,111,.1);color:var(--dn);border:1px solid rgba(239,71,111,.2)}
+.fromto-card.to .fromto-tag{background:rgba(6,214,160,.1);color:var(--ac);border:1px solid rgba(6,214,160,.2)}
+
+/* Barrier section */
+.barrier-icons{display:flex;justify-content:center;gap:2rem;margin-bottom:2rem}
+.barrier-icon{display:flex;flex-direction:column;align-items:center;gap:.4rem;opacity:.5}
+.barrier-icon span:first-child{font-size:2rem}
+.barrier-icon span:last-child{font-size:.7rem;color:var(--ts)}
+
+/* Scroll fade-in animations */
+.fade-up{opacity:0;transform:translateY(30px);transition:all .7s cubic-bezier(.16,1,.3,1)}.fade-up.visible{opacity:1;transform:translateY(0)}
+.fade-up-d1{transition-delay:.1s}.fade-up-d2{transition-delay:.2s}.fade-up-d3{transition-delay:.3s}
+
+/* Landing responsive */
+@media(max-width:768px){.pillars,.questions,.impact-grid{grid-template-columns:1fr}.land-section{padding:2.5rem 1.5rem;min-height:auto}.fromto-row{grid-template-columns:1fr;gap:.5rem}.fromto-arrow{transform:rotate(90deg);margin:0 auto}}
+
+/* ─── HEADER ─── */
+header{background:var(--bg2);border-bottom:1px solid var(--bd);padding:.6rem 1.5rem;display:flex;align-items:center;gap:1rem;z-index:10;backdrop-filter:blur(10px)}
+.logo{font-size:1.4rem;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:.5rem}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--p),var(--ac));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.logo span{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hbadges{display:flex;gap:.4rem;margin-left:auto}
+.badge{padding:.2rem .6rem;border-radius:2rem;font-size:.65rem;font-weight:600;background:var(--card);border:1px solid var(--bd);color:var(--ts);transition:all .3s}
+.badge.on{background:rgba(6,214,160,.15);border-color:var(--ac);color:var(--ac)}
+
+/* ─── MAIN LAYOUT ─── */
+.main{flex:1;display:flex;overflow:hidden}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:260px;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
+.ssec{padding:.85rem 1rem;border-bottom:1px solid var(--bd)}
+.ssec h3{font-size:.65rem;text-transform:uppercase;color:var(--ts);letter-spacing:1px;margin-bottom:.65rem;font-weight:600}
+.mcard{padding:.65rem .75rem;border-radius:10px;cursor:pointer;transition:all .25s;margin-bottom:.4rem;border:1px solid transparent;background:transparent;position:relative;overflow:hidden}
+.mcard::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--p),var(--ac));opacity:0;transition:opacity .25s;border-radius:10px}
+.mcard:hover{border-color:var(--bd);background:var(--card)}.mcard:hover::before{opacity:.05}
+.mcard.sel{border-color:var(--pl);background:rgba(108,60,225,.1)}.mcard.sel::before{opacity:.08}
+.mcard h4{font-size:.82rem;color:var(--tx);position:relative;font-weight:600}.mcard p{font-size:.7rem;color:var(--ts);margin-top:.2rem;position:relative}
+.si{display:flex;align-items:center;gap:.5rem;font-size:.75rem;margin-bottom:.4rem;color:var(--ts)}
+.sd{width:7px;height:7px;border-radius:50%;background:var(--bd);transition:all .4s;flex-shrink:0}.sd.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}.sd.pn{background:var(--wr);box-shadow:0 0 6px var(--wr)}
+
+/* ─── CHAT AREA ─── */
+.chat-c{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+.msgs{flex:1;overflow-y:auto;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.75rem;scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
+.msg{max-width:82%;animation:msgIn .35s cubic-bezier(.16,1,.3,1)}
+@keyframes msgIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.msg.u{align-self:flex-end}.msg.a{align-self:flex-start}
+.bubble{padding:.8rem 1rem;border-radius:var(--radius);line-height:1.6;font-size:.85rem;position:relative}
+.msg.u .bubble{background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 12px rgba(108,60,225,.3)}
+.msg.a .bubble{background:var(--card);border:1px solid var(--bd);border-bottom-left-radius:4px;box-shadow:var(--sh)}
+.mlbl{font-size:.65rem;color:var(--ts);margin-bottom:.2rem;padding:0 .4rem;display:flex;align-items:center;gap:.35rem;font-weight:500}
+.msg.a .mlbl::before{content:'';width:14px;height:14px;background:linear-gradient(135deg,var(--p),var(--ac));border-radius:4px;display:inline-block}
+.bubble strong{font-weight:700;color:var(--ac)}.msg.u .bubble strong{color:#fff}
+.bubble em{font-style:italic;color:var(--ts)}.msg.u .bubble em{color:rgba(255,255,255,.7)}
+.bubble ul,.bubble ol{margin:.4rem 0;padding-left:1.2rem}.bubble li{margin:.2rem 0}
+.bubble table{border-collapse:collapse;margin:.6rem 0;font-size:.78rem;width:100%;border-radius:8px;overflow:hidden}
+.bubble th,.bubble td{border:1px solid var(--bd);padding:.35rem .5rem;text-align:left}
+.bubble th{background:var(--card2);font-weight:600;color:var(--ac);border-bottom:2px solid var(--pl)}
+.bubble td{background:var(--bg2)}
+.bubble hr{border:none;border-top:1px solid var(--bd);margin:.6rem 0}
+
+/* ─── TYPING INDICATOR ─── */
+.typing{display:flex;gap:4px;padding:.8rem 1rem;align-items:center}
+.typing span{width:6px;height:6px;background:var(--ts);border-radius:50%;animation:bounce .6s infinite alternate}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{to{transform:translateY(-5px);background:var(--ac)}}
+
+/* ─── WELCOME ─── */
+.welcome{text-align:center;padding:2rem;max-width:640px;margin:auto}
+.welcome h2{font-size:1.5rem;font-weight:800;margin-bottom:.4rem;background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.welcome p{color:var(--ts);line-height:1.6;margin-bottom:1.25rem;font-size:.88rem}
+.excards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem}
+.exc{padding:.85rem;border:1px solid var(--bd);border-radius:12px;cursor:pointer;transition:all .25s;text-align:left;background:var(--card);position:relative;overflow:hidden}
+.exc::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--p),var(--ac));opacity:0;transition:opacity .25s}
+.exc:hover{border-color:var(--pl);transform:translateY(-2px);box-shadow:var(--glow)}.exc:hover::after{opacity:.06}
+.exc h4{font-size:.78rem;color:var(--tx);margin-bottom:.3rem;position:relative;z-index:1;font-weight:600}.exc p{font-size:.7rem;color:var(--ts);position:relative;z-index:1}
+
+/* ─── AVATAR ─── */
+.avatar-wrap{margin-bottom:1rem;position:relative}
+.avatar-container{width:100px;height:100px;margin:0 auto;position:relative;cursor:pointer}
+.avatar-container:hover .avatar-ring{transform:scale(1.05)}
+.avatar-ring{position:absolute;inset:-4px;border-radius:50%;background:conic-gradient(var(--p),var(--ac),var(--p));animation:spin 8s linear infinite;transition:transform .3s}
+@keyframes spin{to{transform:rotate(360deg)}}
+.avatar-ring.thinking{animation:spin 1.5s linear infinite}
+.avatar-ring.solved{background:conic-gradient(var(--ok),var(--ac),var(--ok));animation:pulse-ring 2s ease infinite}
+@keyframes pulse-ring{0%,100%{opacity:.7}50%{opacity:1}}
+.avatar-bg{position:absolute;inset:2px;border-radius:50%;background:var(--bg2);z-index:1}
+.avatar-face{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center}
+.avatar-face svg{width:60px;height:60px}
+.avatar-status{position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:var(--ok);border:2px solid var(--bg2);z-index:3;transition:background .3s}
+.avatar-status.thinking{background:var(--wr);animation:pulse-dot 1s infinite}
+.avatar-status.error{background:var(--dn)}
+@keyframes pulse-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+.avatar-mood{font-size:.7rem;text-align:center;color:var(--ts);margin-top:.4rem;font-weight:500;min-height:1.2em}
+
+/* ─── INPUT AREA ─── */
+.iarea{padding:.75rem 1.25rem;background:var(--bg2);border-top:1px solid var(--bd)}
+.icont{display:flex;gap:.6rem;align-items:flex-end}
+.iwrap{flex:1;position:relative}
+textarea{width:100%;padding:.7rem .9rem;border:2px solid var(--bd);border-radius:12px;font-size:.85rem;font-family:inherit;resize:none;outline:none;transition:all .25s;min-height:44px;max-height:150px;background:var(--card);color:var(--tx)}
+textarea:focus{border-color:var(--pl);box-shadow:0 0 0 3px rgba(108,60,225,.15)}
+textarea::placeholder{color:var(--ts)}
+.sbtn{padding:.7rem 1.1rem;background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border:none;border-radius:12px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .25s;white-space:nowrap;position:relative;overflow:hidden}
+.sbtn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--ac),var(--pl));opacity:0;transition:opacity .25s}
+.sbtn:hover::before{opacity:.3}
+.sbtn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(108,60,225,.4)}
+.sbtn:active{transform:translateY(0)}
+.sbtn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.sbtn span{position:relative;z-index:1}
+.sbtn.ld{animation:pls 1.2s infinite}@keyframes pls{0%,100%{opacity:.5}50%{opacity:1}}
+.qa{display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap}
+.qb{padding:.3rem .65rem;border:1px solid var(--bd);border-radius:2rem;background:transparent;font-size:.7rem;cursor:pointer;color:var(--ts);transition:all .25s;font-weight:500}
+.qb:hover{border-color:var(--pl);color:var(--pl);background:rgba(108,60,225,.08)}
+#pp{font-size:.75rem;color:var(--ts)}
+#pp div{margin-bottom:3px;padding:.15rem 0}
+#pp strong{color:var(--tx);font-weight:600}
+
+/* ─── EXPORT BUTTON ─── */
+.export-btn{width:100%;padding:.5rem .75rem;background:transparent;border:1px solid var(--bd);border-radius:8px;color:var(--ts);font-size:.72rem;font-weight:500;cursor:pointer;transition:all .25s;text-align:left}
+.export-btn:hover{border-color:var(--ac);color:var(--ac);background:rgba(6,214,160,.06)}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--ts)}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){.sidebar{display:none}.excards{grid-template-columns:1fr}.msgs{padding:.75rem}}
+</style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="landing-mode">
+
+<!-- ═══ LANDING PAGE ═══ -->
+<div class="landing" id="landing">
+
+ <!-- HERO -->
+ <section class="land-hero">
+  <h1>Tus operaciones<br>tienen <span>respuestas exactas</span></h1>
+  <p class="land-sub">Seas de la industria que seas, tus operaciones se componen de las mismas actividades fundamentales. Y cada una esconde una pregunta que, bien contestada, se traduce en mucho dinero.</p>
+  <div class="scroll-hint" onclick="document.getElementById('sec-ops').scrollIntoView({behavior:'smooth'})">
+   Descubrí cuáles
+   <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </div>
+ </section>
+
+ <!-- SECTION 1: Las 3 actividades -->
+ <section class="land-section" id="sec-ops">
+  <div class="land-content">
+   <h2 class="fade-up">Toda empresa tiene <span>3 tipos de actividades</span></h2>
+   <p class="fade-up fade-up-d1">No importa si fabricás tornillos, vendés seguros o atendés pacientes. Simplificando, las operaciones de cualquier compañía se componen de estas tres actividades.</p>
+   <div class="pillars">
+    <div class="pillar fade-up fade-up-d1">
+     <span class="pillar-icon">🏭</span>
+     <h3>Actividades productivas</h3>
+     <p>Transformar insumos en productos o servicios. Decidir qué fabricar, cuánto, con qué recursos. Es donde se genera el valor.</p>
+    </div>
+    <div class="pillar fade-up fade-up-d2">
+     <span class="pillar-icon">📦</span>
+     <h3>Almacenamiento y logística</h3>
+     <p>Guardar, mover y reponer. Cuánto stockear, cada cuánto pedir, cómo distribuir. Es donde se protege el valor.</p>
+    </div>
+    <div class="pillar fade-up fade-up-d3">
+     <span class="pillar-icon">🤝</span>
+     <h3>Atención al cliente</h3>
+     <p>Servir, atender, responder. Cuántos servidores, cuánta espera es aceptable. Es donde se entrega el valor.</p>
+    </div>
+   </div>
+  </div>
+ </section>
+
+ <!-- SECTION 2: Las 3 preguntas -->
+ <section class="land-section">
+  <div class="land-content">
+   <h2 class="fade-up">Cada actividad plantea <span>una pregunta clave</span></h2>
+   <p class="fade-up fade-up-d1">Y cada pregunta tiene un modelo matemático que la responde con precisión. No es intuición: son números.</p>
+   <div class="questions">
+    <div class="q-card fade-up fade-up-d1">
+     <div class="q-num">01</div>
+     <h3>¿Qué me conviene producir con lo que tengo y a cuánto lo vendo?</h3>
+     <p>Tenés recursos limitados — horas, materiales, presupuesto. ¿Cómo los asignás para maximizar ganancia o minimizar costos?</p>
+     <span class="q-tag">📐 Programación Lineal</span>
+    </div>
+    <div class="q-card fade-up fade-up-d2">
+     <div class="q-num">02</div>
+     <h3>¿Cómo almaceno y distribuyo de la manera más eficiente?</h3>
+     <p>Pedir mucho sale caro por almacenamiento. Pedir poco sale caro por flete. ¿Cuál es el punto justo?</p>
+     <span class="q-tag">📦 Modelos de Inventario</span>
+    </div>
+    <div class="q-card fade-up fade-up-d3">
+     <div class="q-num">03</div>
+     <h3>¿Cómo atiendo a mis clientes de la mejor manera posible?</h3>
+     <p>Muchos servidores es caro. Pocos genera espera y pérdida de clientes. ¿Cuántos necesitás realmente?</p>
+     <span class="q-tag">🔄 Teoría de Colas</span>
+    </div>
+   </div>
+  </div>
+ </section>
+
+ <!-- SECTION 3: Impacto económico -->
+ <section class="land-section">
+  <div class="land-content">
+   <h2 class="fade-up">Parece un tema menor,<br>pero <span>es mucho dinero</span></h2>
+   <p class="fade-up fade-up-d1">Empresas que optimizan estas tres áreas con modelos cuantitativos ven resultados concretos, medibles, inmediatos.</p>
+   <div class="impact-grid">
+    <div class="impact-card fade-up fade-up-d1">
+     <div class="impact-num">+15-30%</div>
+     <h4>Margen en producción</h4>
+     <p>Asignar recursos óptimamente puede incrementar la ganancia sin cambiar nada más.</p>
+    </div>
+    <div class="impact-card fade-up fade-up-d2">
+     <div class="impact-num">-20-40%</div>
+     <h4>Costos de inventario</h4>
+     <p>El lote óptimo reduce el costo total de almacenamiento y pedidos combinados.</p>
+    </div>
+    <div class="impact-card fade-up fade-up-d3">
+     <div class="impact-num">-35-50%</div>
+     <h4>Costos de espera</h4>
+     <p>El número justo de servidores minimiza el costo total sin sobre-invertir.</p>
+    </div>
+   </div>
+  </div>
+ </section>
+
+ <!-- SECTION 4: La barrera -->
+ <section class="land-section">
+  <div class="land-content">
+   <div class="barrier-icons fade-up">
+    <div class="barrier-icon"><span>🎓</span><span>Ingeniería</span></div>
+    <div class="barrier-icon"><span>📐</span><span>Modelos</span></div>
+    <div class="barrier-icon"><span>💻</span><span>Software</span></div>
+    <div class="barrier-icon"><span>💰</span><span>Licencias</span></div>
+   </div>
+   <h2 class="fade-up" style="text-align:center">Resolver esto siempre tuvo<br><span>una barrera de entrada alta</span></h2>
+   <p class="fade-up fade-up-d1" style="text-align:center;margin:0 auto 1rem">Hasta ahora, para contestar estas preguntas necesitabas ser ingeniero, dominar modelos matemáticos y tener software especializado. No estaba al alcance del dueño de una PyME, de un gerente de operaciones sin background técnico, ni de nadie que simplemente quiera tomar una mejor decisión.</p>
+   <p class="fade-up fade-up-d2" style="text-align:center;margin:0 auto;color:var(--ac);font-weight:600;font-size:1.05rem">¿Y si pudieras explicar tu problema como se lo contarías a un colega?</p>
+  </div>
+ </section>
+
+ <!-- SECTION 5: From → To -->
+ <section class="land-section" id="sec-fromto">
+  <div class="land-content">
+   <h2 class="fade-up">De esto... <span>a esto</span></h2>
+   <p class="fade-up fade-up-d1">Lo que antes requería modelar a mano, ahora lo describís en lenguaje natural.</p>
+
+   <div class="fromto-stack">
+    <!-- LP: From → To -->
+    <div class="fromto-row fade-up">
+     <div class="fromto-card from">
+      <div class="fromto-label">🚫 Antes</div>
+      <div class="fromto-formula"><span class="fn">MAX</span> <span class="var">Z</span> <span class="op">=</span> 0.6<span class="var">x₁</span> + 0.8<span class="var">x₂</span> + 7<span class="var">x₃</span>
+<span class="op">s.a.</span>
+  0.5<span class="var">x₁</span> + 0.1<span class="var">x₂</span> + 2<span class="var">x₃</span> <span class="op">≤</span> 100
+  0.05<span class="var">x₁</span> + 0.08<span class="var">x₂</span> + 1<span class="var">x₃</span> <span class="op">≤</span> 30
+  0.1<span class="var">x₁</span> + 0.15<span class="var">x₂</span> + 1.5<span class="var">x₃</span> <span class="op">≤</span> 50
+  <span class="var">x₁</span>, <span class="var">x₂</span>, <span class="var">x₃</span> <span class="op">≥</span> 0</div>
+      <span class="fromto-tag">Programación Lineal</span>
+     </div>
+     <div class="fromto-arrow">→</div>
+     <div class="fromto-card to">
+      <div class="fromto-label">✅ Ahora</div>
+      <div class="fromto-natural">"Tengo una panadería. Hago <em>pan</em>, <em>medialunas</em> y <em>tortas</em>. Tengo <em>100 kg de harina</em>, <em>30 kg de azúcar</em> y <em>50 kg de manteca</em> por día. El pan me deja <em>$0.60</em>, la medialuna <em>$0.80</em> y la torta <em>$7</em>. ¿Qué me conviene producir?"</div>
+      <span class="fromto-tag">Lenguaje natural</span>
+     </div>
+    </div>
+
+    <!-- Stock: From → To -->
+    <div class="fromto-row fade-up">
+     <div class="fromto-card from">
+      <div class="fromto-label">🚫 Antes</div>
+      <div class="fromto-formula"><span class="var">q*</span> <span class="op">=</span> <span class="fn">√</span>(2·<span class="var">D</span>·<span class="var">k</span> / <span class="var">c₁</span>)
+
+<span class="var">CTE</span> <span class="op">=</span> <span class="var">b</span>·<span class="var">D</span> + <span class="var">k</span>·(<span class="var">D</span>/<span class="var">q*</span>) + <span class="var">c₁</span>·(<span class="var">q*</span>/2)
+
+<span class="var">SR</span> <span class="op">=</span> <span class="var">d</span>·<span class="var">LT</span> + <span class="var">Sp</span>
+
+donde <span class="var">D</span>=demanda, <span class="var">k</span>=costo pedido,
+<span class="var">c₁</span>=costo almac., <span class="var">b</span>=precio unit.</div>
+      <span class="fromto-tag">Modelo EOQ (Wilson)</span>
+     </div>
+     <div class="fromto-arrow">→</div>
+     <div class="fromto-card to">
+      <div class="fromto-label">✅ Ahora</div>
+      <div class="fromto-natural">"Soy distribuidor de caños de PVC. Vendo unas <em>15.000 unidades por año</em>. Cada pedido me cuesta <em>$200</em> entre flete y papeleo. Almacenar cada caño me sale <em>$3 por año</em>. El caño me cuesta <em>$45</em>. El proveedor tarda <em>10 días</em>. ¿Cuántos pido y cada cuánto?"</div>
+      <span class="fromto-tag">Lenguaje natural</span>
+     </div>
+    </div>
+
+    <!-- Queue: From → To -->
+    <div class="fromto-row fade-up">
+     <div class="fromto-card from">
+      <div class="fromto-label">🚫 Antes</div>
+      <div class="fromto-formula"><span class="var">ρ</span> <span class="op">=</span> <span class="var">λ</span>/(<span class="var">M</span>·<span class="var">μ</span>)
+
+<span class="var">P₀</span> <span class="op">=</span> 1 / [<span class="fn">Σ</span>(<span class="var">ρᵀ</span>ⁿ/n!) + (<span class="var">ρᵀ</span>ᴹ/M!)·1/(1-<span class="var">ρ</span>)]
+
+<span class="var">Lc</span> <span class="op">=</span> C(<span class="var">M</span>,<span class="var">ρᵀ</span>)·<span class="var">ρ</span>/(1-<span class="var">ρ</span>)
+
+<span class="var">CT</span> <span class="op">=</span> <span class="var">ce</span>·<span class="var">L</span> + <span class="var">cs</span>·<span class="var">M</span>
+
+Minimizar <span class="var">CT</span> para <span class="var">M*</span> óptimo</div>
+      <span class="fromto-tag">Modelo M/M/M</span>
+     </div>
+     <div class="fromto-arrow">→</div>
+     <div class="fromto-card to">
+      <div class="fromto-label">✅ Ahora</div>
+      <div class="fromto-natural">"Tengo una clínica donde llegan <em>18 pacientes por hora</em>. Cada médico tarda <em>15 minutos</em> en atender. Un médico me cuesta <em>USD 40 por hora</em>. La espera del paciente me cuesta <em>USD 25 por hora</em>. ¿Cuántos médicos necesito?"</div>
+      <span class="fromto-tag">Lenguaje natural</span>
+     </div>
+    </div>
+   </div>
+  </div>
+ </section>
+
+ <!-- CTA -->
+ <section class="land-cta">
+  <h2 class="fade-up">Ahora está <span>al alcance de tu mano</span></h2>
+  <p class="fade-up fade-up-d1">Describí tu situación como se la contarías a un colega. INVOP AI se encarga del modelo matemático.</p>
+  <button class="cta-btn fade-up fade-up-d2" onclick="enterApp()"><span>Empezar a resolver</span></button>
+ </section>
+
+</div>
+
+<!-- ═══ APP (hidden until CTA) ═══ -->
+<div class="app-wrap" id="appWrap">
+<header>
+ <div class="logo"><div class="logo-icon">O</div>Opti<span>Solve</span></div>
+ <div class="hbadges">
+  <span class="badge" id="bmod">Sin módulo</span>
+  <span class="badge" id="bstg">Esperando</span>
+  <span class="badge on" id="brag">Solvers</span>
+ </div>
+</header>
+<div class="main">
+ <aside class="sidebar">
+  <div class="ssec">
+   <h3>Módulos</h3>
+   <div class="mcard" data-m="LP" onclick="selMod('LP')"><h4>📐 Programación Lineal</h4><p>Maximizar/minimizar con restricciones. Simplex.</p></div>
+   <div class="mcard" data-m="STOCK" onclick="selMod('STOCK')"><h4>📦 Inventarios</h4><p>EOQ, punto de reorden, agotamiento.</p></div>
+   <div class="mcard" data-m="QUEUE" onclick="selMod('QUEUE')"><h4>🔄 Teoría de Colas</h4><p>M/M/1, M/M/M, optimización servidores.</p></div>
+  </div>
+  <div class="ssec" id="pipeP" style="display:none">
+   <h3>Pipeline</h3>
+   <div class="si"><div class="sd" id="s1"></div>Interpretación</div>
+   <div class="si"><div class="sd" id="s2"></div>Clasificación</div>
+   <div class="si"><div class="sd" id="s3"></div>Validación</div>
+   <div class="si"><div class="sd" id="s4"></div>Problem Spec</div>
+   <div class="si"><div class="sd" id="s5"></div>Resolución</div>
+   <div class="si"><div class="sd" id="s6"></div>Sensibilidad</div>
+  </div>
+  <div class="ssec" id="parP" style="display:none">
+   <h3>Parámetros</h3>
+   <div id="pp"></div>
+  </div>
+  <div class="ssec" style="margin-top:auto">
+   <h3>Registro</h3>
+   <div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--ts);margin-bottom:.5rem">
+    <div class="sd on" style="width:6px;height:6px"></div><span id="logCount">0 entradas</span>
+   </div>
+   <button class="export-btn" onclick="exportLog()">📥 Exportar log (.xlsx)</button>
+  </div>
+ </aside>
+ <main class="chat-c">
+  <div class="msgs" id="msgs">
+   <div class="welcome" id="wel">
+    <div class="avatar-wrap">
+     <div class="avatar-container" id="avatarMain" onclick="avatarClick()">
+      <div class="avatar-ring" id="avatarRing"></div>
+      <div class="avatar-bg"></div>
+      <div class="avatar-face" id="avatarFace">
+       <svg viewBox="0 0 60 60" fill="none">
+        <circle cx="30" cy="30" r="24" fill="url(#av-grad)" opacity=".15"/>
+        <circle cx="22" cy="25" r="3" fill="#E8E8F0" class="av-eye av-eye-l"/>
+        <circle cx="38" cy="25" r="3" fill="#E8E8F0" class="av-eye av-eye-r"/>
+        <circle cx="22" cy="25" r="1.5" fill="#1A1A2E" class="av-pupil av-pupil-l"/>
+        <circle cx="38" cy="25" r="1.5" fill="#1A1A2E" class="av-pupil av-pupil-r"/>
+        <path d="M22 37 Q30 44 38 37" stroke="#06D6A0" stroke-width="2.5" stroke-linecap="round" fill="none" class="av-mouth"/>
+        <circle cx="15" cy="32" r="3" fill="#EF476F" opacity=".2" class="av-blush-l"/>
+        <circle cx="45" cy="32" r="3" fill="#EF476F" opacity=".2" class="av-blush-r"/>
+        <defs><linearGradient id="av-grad" x1="6" y1="6" x2="54" y2="54"><stop stop-color="#6C3CE1"/><stop offset="1" stop-color="#06D6A0"/></linearGradient></defs>
+       </svg>
+      </div>
+      <div class="avatar-status" id="avatarStatus"></div>
+     </div>
+     <div class="avatar-mood" id="avatarMood">Listo para resolver</div>
+    </div>
+    <h2>Bienvenido a INVOP AI</h2>
+    <p>Describí tu problema operativo en lenguaje natural y te ayudo a resolverlo con el modelo matemático correcto.</p>
+    <div class="excards">
+     <div class="exc" onclick="exSend('lp')"><h4>📐 Producción</h4><p>Fábrica con dos piezas, tres etapas. ¿Cuánto fabricar?</p></div>
+     <div class="exc" onclick="exSend('stock')"><h4>📦 Inventario</h4><p>15.000 un/año. ¿Cuánto pedir y cada cuánto?</p></div>
+     <div class="exc" onclick="exSend('queue')"><h4>🔄 Atención</h4><p>3 cajeros, 20 cl/hora. ¿Necesito más?</p></div>
+    </div>
+   </div>
+  </div>
+  <div class="iarea">
+   <div class="icont">
+    <div class="iwrap"><textarea id="inp" rows="1" placeholder="Describí tu problema operativo..." onkeydown="hKey(event)" oninput="aRsz(this)"></textarea></div>
+    <button class="sbtn" id="sbt" onclick="send()"><span>Enviar</span></button>
+   </div>
+   <div class="qa">
+    <button class="qb" onclick="qSend('¿Qué pasa si cambia la demanda?')">Sensibilidad</button>
+    <button class="qb" onclick="qSend('Nuevo problema')">Nuevo problema</button>
+    <button class="qb" onclick="qSend('Explicame el modelo')">Explicar modelo</button>
+   </div>
+  </div>
+ </main>
+</div>
+</div><!-- /app-wrap -->
+<script>
+// ═══════════════════════════════════════════════════════════════
+// INVOP AI — SELF-CONTAINED SOLVERS + CONVERSATIONAL UI
+// Fuente de verdad: Libros de Miguel Miranda (IO)
+// ═══════════════════════════════════════════════════════════════
+
+// ─── LP SOLVER (Simplex via 2-phase revised) ────────────────
+const LP={
+ solve(spec){
+  const{objective_type:ot,objective_coefficients:oc,constraints:cs}=spec;
+  const vars=new Set(Object.keys(oc));
+  cs.forEach(c=>Object.keys(c.coeffs).forEach(v=>vars.add(v)));
+  const vl=[...vars].sort(),n=vl.length,m=cs.length;
+  const vi={};vl.forEach((v,i)=>vi[v]=i);
+  // Build: c vector, A matrix, b vector
+  const c=vl.map(v=>-(oc[v]||0)*(ot==='MAX'?1:-1));
+  const A=[],b=[],sns=[];
+  for(let i=0;i<m;i++){
+   const row=new Array(n).fill(0);
+   for(const[v,co]of Object.entries(cs[i].coeffs)){if(vi[v]!==undefined)row[vi[v]]=co;}
+   let sense=cs[i].sense||'<=',rhs=cs[i].rhs||0;
+   if(sense==='>='){ row.forEach((_,j)=>row[j]*=-1); rhs*=-1; sense='<='; }
+   A.push(row); b.push(rhs); sns.push(sense);
+  }
+  // Check for negative RHS — need Big-M artificial variables
+  const needArt=[];
+  for(let i=0;i<m;i++){if(b[i]<-1e-10)needArt.push(i);}
+  const nArt=needArt.length;
+  // Total columns: n original + m slacks + nArt artificials
+  const N=n+m+nArt,C=new Array(N).fill(0);
+  const BIG_M=1e7;
+  for(let j=0;j<n;j++) C[j]=c[j];
+  // Artificial variables get huge cost to drive them out of basis
+  for(let k=0;k<nArt;k++) C[n+m+k]=BIG_M;
+  const Ab=A.map((row,i)=>{
+   const nr=new Array(N).fill(0);
+   row.forEach((v,j)=>nr[j]=v);
+   nr[n+i]=1; // slack
+   return nr;
+  });
+  // For rows with negative b, multiply by -1 and use artificial variable
+  const basis=Array.from({length:m},(_,i)=>n+i);
+  for(let k=0;k<nArt;k++){
+   const i=needArt[k];
+   // Multiply row by -1 to make b positive
+   for(let j=0;j<N;j++) Ab[i][j]*=-1;
+   b[i]*=-1;
+   // Slack coefficient is now -1, add artificial = +1
+   Ab[i][n+m+k]=1;
+   basis[i]=n+m+k; // artificial variable in basis
+  }
+  // Simplex iterations
+  const MAX_IT=500;let it=0;
+  while(it++<MAX_IT){
+   // Compute reduced costs
+   const cB=basis.map(j=>C[j]);
+   let pivCol=-1,minRC=-.0001;
+   for(let j=0;j<N;j++){
+    if(basis.includes(j))continue;
+    let zj=0;for(let i=0;i<m;i++)zj+=cB[i]*Ab[i][j];
+    const rc=C[j]-zj;
+    if(rc<minRC){minRC=rc;pivCol=j;}
+   }
+   if(pivCol===-1)break; // optimal
+   // Min ratio test
+   let pivRow=-1,minR=Infinity;
+   for(let i=0;i<m;i++){
+    if(Ab[i][pivCol]>.0001){
+     const r=b[i]/Ab[i][pivCol];
+     if(r<minR){minR=r;pivRow=i;}
+    }
+   }
+   if(pivRow===-1) return{status:'NO_ACOTADO',message:'Función objetivo no acotada. Revise restricciones.'};
+   // Pivot
+   const pv=Ab[pivRow][pivCol];
+   for(let j=0;j<N;j++) Ab[pivRow][j]/=pv;
+   b[pivRow]/=pv;
+   for(let i=0;i<m;i++){
+    if(i===pivRow)continue;
+    const f=Ab[i][pivCol];
+    for(let j=0;j<N;j++) Ab[i][j]-=f*Ab[pivRow][j];
+    b[i]-=f*b[pivRow];
+   }
+   basis[pivRow]=pivCol;
+  }
+  // Check if any artificial variables remain in basis (infeasible)
+  for(let k=0;k<nArt;k++){
+   const artIdx=n+m+k;
+   for(let i=0;i<m;i++){
+    if(basis[i]===artIdx&&b[i]>1e-6)
+     return{status:'INFACTIBLE',message:'El problema no tiene solución factible. Revise las restricciones.'};
+   }
+  }
+  // Extract solution
+  const vals={};vl.forEach(v=>vals[v]=0);
+  for(let i=0;i<m;i++){if(basis[i]<n) vals[vl[basis[i]]]=Math.round(b[i]*1e6)/1e6;}
+  let Z=0;for(const[v,co]of Object.entries(oc)) Z+=co*(vals[v]||0);
+  Z=Math.round(Z*1e6)/1e6;
+  // Constraints detail
+  const cdet=cs.map((ct,i)=>{
+   let lhs=0;for(const[v,co]of Object.entries(ct.coeffs)) lhs+=co*(vals[v]||0);
+   lhs=Math.round(lhs*1e6)/1e6;
+   const sl=ct.sense==='<='?ct.rhs-lhs:ct.sense==='>='?lhs-ct.rhs:0;
+   const cB2=basis.map(j=>C[j]);
+   let sp=0;for(let k=0;k<m;k++) sp+=cB2[k]*Ab[k][n+i];
+   sp=sp*(ot==='MAX'?-1:1);
+   return{name:ct.name||`R${i+1}`,lhs:Math.round(lhs*1e4)/1e4,sense:ct.sense,rhs:ct.rhs,slack:Math.round(sl*1e4)/1e4,shadow_price:Math.round(sp*1e4)/1e4,binding:Math.abs(sl)<.001};
+  });
+  // Sensitivity
+  const sens={rhs_ranges:{},interpretation:[]};
+  cdet.forEach(cd=>{
+   if(cd.binding){
+    sens.rhs_ranges[cd.name]={shadow_price:cd.shadow_price,binding:true};
+    sens.interpretation.push(`El recurso '${cd.name}' está saturado. Cada unidad adicional ${ot==='MAX'?'aumenta':'disminuye'} Z en $${Math.abs(cd.shadow_price)}.`);
+   }else{
+    sens.rhs_ranges[cd.name]={slack:cd.slack,binding:false};
+    sens.interpretation.push(`'${cd.name}' tiene ${cd.slack} unidades sin usar.`);
+   }
+  });
+  const bots=cdet.filter(c=>c.binding).map(c=>c.name);
+  const slr=cdet.filter(c=>!c.binding).map(c=>[c.name,c.slack]);
+  const acts=[];
+  const prettyV=(v)=>{const n=v.replace('x_','');return n.charAt(0).toUpperCase()+n.slice(1);};
+  for(const[v,val]of Object.entries(vals)){if(val>1e-6)acts.push(`Producir ${Number.isInteger(val)?val:val.toFixed(2)} unidades de ${prettyV(v)}.`);}
+  if(bots.length)acts.push(`Cuellos de botella: ${bots.join(', ')}. Considerar ampliar estos recursos.`);
+  slr.forEach(([n,s])=>acts.push(`'${n}' tiene ${s.toFixed(1)} unidades sobrantes.`));
+  return{status:'ÓPTIMO',objective_value:Z,variable_values:vals,constraint_details:cdet,sensitivity:sens,
+   decision:{summary:`Solución óptima ${ot==='MAX'?'maximiza ganancia':'minimiza costo'} en $${Z.toLocaleString('es-AR',{minimumFractionDigits:2})}`,actions:acts,bottlenecks:bots}};
+ }
+};
+
+// ─── STOCK SOLVER (Fórmulas Miranda) ────────────────────────
+const STOCK={
+ solve(p){
+  const D=+p.demand_D,k=+p.order_cost_k,c1=+p.holding_cost_c1,b=+p.acquisition_cost_b,
+   T=+(p.planning_horizon_T||1),LT=+(p.lead_time_LT||0),Sp=+(p.safety_stock_Sp||0),
+   c2=p.shortage_cost_c2!=null?+p.shortage_cost_c2:null;
+  if(D<=0)return{status:'ERROR',message:'Demanda (D) debe ser positiva.'};
+  if(c1<=0)return{status:'ERROR',message:'Costo almacenamiento (c₁) debe ser positivo.'};
+  if(c2!==null&&c2>0){
+   // EOQ con agotamiento — Miranda Cap. 4
+   const qo=Math.sqrt(2*k*D*(c1+c2)/(T*c1*c2));
+   const So=qo*Math.sqrt(c2/(c1+c2)), sm=qo-So;
+   const to=(T/D)*qo, no=D/qo;
+   const ca=b*D,co=(D/qo)*k,ch=So*So*T*c1/(2*qo),cs2=(qo-So)**2*T*c2/(2*qo),csp=Sp*c1*T;
+   const CTE=ca+co+ch+cs2+csp;
+   const SR=LT*D/T+Sp-sm;
+   const sens=this._sens(qo,D,k,c1,T);
+   return{status:'ÓPTIMO',subtype:'EOQ con agotamiento (Miranda Cap.4)',results:{qo:r2(qo),So:r2(So),shortage_max:r2(sm),to_days:r2(to*365),no_orders:r2(no),SR:r2(SR),CTE:r2(CTE)},
+    decision:{summary:'Modelo EOQ con agotamiento admitido (Miranda Cap.4).',actions:[
+     `Pedir ${r0(qo)} unidades cada vez.`,`Cada ${r1(to*365)} días (${r1(no)} pedidos/año).`,
+     `Stock máximo: ${r0(So)} un. Faltante máximo: ${r0(sm)} un.`,`Punto de reorden: ${r0(SR)} un.`,
+     `CTE: $${r2(CTE).toLocaleString('es-AR')}/año.`
+    ]},sensitivity:sens,
+    formulas:{qo:'√(2kD(c₁+c₂)/Tc₁c₂)',So:'qo·√(c₂/(c₁+c₂))',source:'Miranda, Stocks, Cap.4'}};
+  }
+  // EOQ básico — Miranda Cap. 2
+  const qo=Math.sqrt(2*k*D/(T*c1));
+  const to=(T/D)*qo, no=D/qo;
+  const ca=b*D,co=(D/qo)*k,ch=(qo/2)*T*c1,csp=Sp*c1*T;
+  const CTE=ca+co+ch+csp;
+  const dd=D/365, SR=LT*D/T+Sp, Smax=qo+Sp;
+  const sens=this._sens(qo,D,k,c1,T);
+  return{status:'ÓPTIMO',subtype:'EOQ básico (Miranda Cap.2)',results:{qo:r2(qo),to_days:r1(to*365),no_orders:r1(no),SR_reorder_point:r0(SR),S_max:r0(Smax),d_daily:r1(dd),CTE:r2(CTE)},
+   decision:{summary:'Modelo EOQ básico (Miranda Cap.2). Reposición instantánea, sin faltantes.',actions:[
+    `Pedir ${r0(qo)} unidades cada vez (lote óptimo).`,
+    `Hacer pedido cada ${r1(to*365)} días (${r1(no)} pedidos/año).`,
+    `Cuando stock baje a ${r0(SR)} unidades, emitir pedido.`,
+    `Stock máximo: ${r0(Smax)} un. Stock seguridad: ${r0(Sp)} un.`,
+    `Costo total anual: $${r2(CTE).toLocaleString('es-AR')}`
+   ],costs:{adquisicion:r2(ca),pedidos:r2(co),almacenamiento:r2(ch),proteccion:r2(csp),total:r2(CTE)}},
+   sensitivity:sens,
+   formulas:{qo:'√(2kD/Tc₁)',to:'(T/D)·qo',CTE:'bD+√(2kDTc₁)+Sp·c₁',SR:'LT·(D/T)+Sp',source:'Miranda, Stocks, Cap.2'}};
+ },
+ _sens(qo,D,k,c1,T){
+  const tbl=[.7,.8,.9,1,1.1,1.2,1.3,1.5].map(a=>{
+   const q=qo*a,lam=.5*(a+1/a),eps=lam-1;
+   const cv=(D/q)*k+(q/2)*T*c1;
+   return{alpha:a,q:r0(q),lambda:r4(lam),epsilon_pct:r2(eps*100),cte_variable:r0(cv)};
+  });
+  return{sensitivity_table:tbl,interpretation:'La curva de costo es muy plana alrededor del óptimo. Desviaciones de ±30% en q producen solo ~4-5% de aumento en costo variable. Se puede ajustar el lote a cantidades prácticas sin perder eficiencia.',formula:'λ=½(α+1/α), ε=λ-1 (Miranda Cap.2)'};
+ }
+};
+
+// ─── QUEUE SOLVER (Fórmulas Miranda) ────────────────────────
+const QUEUE={
+ solve(p){
+  const lam=+p.arrival_rate_lambda,mu=+p.service_rate_mu;
+  let M=+(p.num_servers_M||1);
+  const N=p.system_capacity_N!=null?+p.system_capacity_N:null,
+   ce=p.cost_per_wait_ce!=null?+p.cost_per_wait_ce:null,
+   cs=p.cost_per_server_cs!=null?+p.cost_per_server_cs:null;
+  if(lam<=0)return{status:'ERROR',message:'Tasa de llegada (λ) debe ser positiva.'};
+  if(mu<=0)return{status:'ERROR',message:'Tasa de servicio (μ) debe ser positiva.'};
+  // If finding optimal M, run economic analysis first and use optimal M
+  let econ=null;
+  if(p._find_optimal_M&&ce!==null&&cs!==null){
+   econ=this._econ(lam,mu,M,N,ce,cs);
+   if(econ.optimal_M){M=econ.optimal_M;p.num_servers_M=M;}
+  }
+  let res;
+  if(N!==null){res=M===1?this._mm1n(lam,mu,N):this._mmmn(lam,mu,M,N);}
+  else{res=M===1?this._mm1(lam,mu):this._mmm(lam,mu,M);}
+  if(res.status==='ERROR'||res.status==='INESTABLE')return res;
+  if(econ)res.economic_analysis=econ;
+  else if(ce!==null&&cs!==null)res.economic_analysis=this._econ(lam,mu,M,N,ce,cs);
+  res.decision=this._dec(res,M,lam,mu,ce,cs);
+  return res;
+ },
+ _mm1(lam,mu){
+  const rho=lam/mu;
+  if(rho>=1)return{status:'INESTABLE',message:`ρ=λ/μ=${r3(rho)}≥1. Sistema inestable. Cola crece indefinidamente. Se necesita μ>${lam}.`,rho:r4(rho)};
+  const p0=1-rho,L=lam/(mu-lam),Lc=lam**2/(mu*(mu-lam)),W=1/(mu-lam),Wc=lam/(mu*(mu-lam)),H=rho;
+  const sp={};for(let n=0;n<=10;n++)sp[n]=r6(rho**n*(1-rho));
+  return{status:'ÓPTIMO',model:'M/M/1',kendall:'P/P/1',
+   results:{rho:r4(rho),p0:r4(p0),L:r4(L),Lc:r4(Lc),W_hours:r4(W),W_minutes:r2(W*60),Wc_hours:r4(Wc),Wc_minutes:r2(Wc*60),H:r4(H),Ts_minutes:r2(60/mu),prob_wait:r4(rho),utilization_pct:r2(rho*100)},
+   state_probabilities:sp,sensitivity:this._sensl(lam,mu,1),
+   formulas:{L:'λ/(μ-λ)',Lc:'λ²/μ(μ-λ)',W:'1/(μ-λ)',Wc:'λ/μ(μ-λ)','p(n)':'ρⁿ(1-ρ)',condition:'ρ=λ/μ<1',source:'Miranda, Colas, Cap.2'}};
+ },
+ _mm1n(lam,mu,N){
+  const rho=lam/mu;let p0,sp={};
+  if(Math.abs(rho-1)<1e-10){p0=1/(N+1);for(let n=0;n<=N;n++)sp[n]=r6(p0);}
+  else{p0=(1-rho)/(1-rho**(N+1));for(let n=0;n<=N;n++)sp[n]=r6(rho**n*p0);}
+  const pN=sp[N],leff=lam*(1-pN),rej=lam*pN;
+  let L;if(Math.abs(rho-1)<1e-10)L=N/2;else L=rho*(1-(N+1)*rho**N+N*rho**(N+1))/((1-rho)*(1-rho**(N+1)));
+  const H=leff/mu,Lc=L-H,W=leff>0?L/leff:0,Wc=leff>0?Lc/leff:0;
+  return{status:'ÓPTIMO',model:'M/M/1/N',kendall:`P/P/1/${N}`,
+   results:{rho:r4(rho),N_capacity:N,p0:r6(p0),pN_rejection:r6(pN),lambda_effective:r4(leff),rejection_rate:r4(rej),L:r4(L),Lc:r4(Lc),W_hours:r4(W),W_minutes:r2(W*60),Wc_hours:r4(Wc),Wc_minutes:r2(Wc*60),H:r4(H),utilization_pct:r2(H*100)},
+   state_probabilities:sp,
+   formulas:{p0:'(1-ρ)/(1-ρ^(N+1))','p(n)':'ρⁿ·p(0)',source:'Miranda, Colas, Cap.2'}};
+ },
+ _mmm(lam,mu,M){
+  const rt=lam/mu,rho=lam/(M*mu);
+  if(rho>=1)return{status:'INESTABLE',message:`ρ=λ/(Mμ)=${r3(rho)}≥1. Sistema inestable con ${M} servidores. Se necesitan al menos ${Math.ceil(lam/mu)} servidores.`,rho:r4(rho),min_servers:Math.ceil(lam/mu)};
+  const m=this._mmmCalc(lam,mu,M);
+  const sp={};for(let n=0;n<Math.min(M+10,20);n++){
+   sp[n]=r6(n<M?(rt**n/fact(n))*m.p0:(rt**n/(fact(M)*M**(n-M)))*m.p0);
+  }
+  return{status:'ÓPTIMO',model:'M/M/M',kendall:`P/P/${M}`,
+   results:{M_servers:M,rho_per_server:r4(rho),rho_total:r4(rt),p0:r6(m.p0),prob_wait:r4(m.Ce),L:r4(m.L),Lc:r4(m.Lc),W_hours:r4(m.W),W_minutes:r2(m.W*60),Wc_hours:r4(m.Wc),Wc_minutes:r2(m.Wc*60),H:r4(m.H),utilization_pct:r2(rho*100)},
+   state_probabilities:sp,sensitivity:this._sensl(lam,mu,M),
+   formulas:{p0:'1/[Σ(ρᵀⁿ/n!)+(ρᵀᴹ/M!)·1/(1-ρ)]',Lc:'C(M,ρᵀ)·ρ/(1-ρ)',condition:'ρ=λ/(Mμ)<1',source:'Miranda, Colas, Cap.3'}};
+ },
+ _mmmn(lam,mu,M,N){
+  const rt=lam/mu,rho=lam/(M*mu);
+  const co=[];for(let n=0;n<=N;n++)co.push(n<=M?rt**n/fact(n):rt**n/(fact(M)*M**(n-M)));
+  const p0=1/co.reduce((a,b)=>a+b,0);
+  const sp={};for(let n=0;n<=N;n++)sp[n]=r6(co[n]*p0);
+  const pN=sp[N],leff=lam*(1-pN);
+  let L=0;for(let n=0;n<=N;n++)L+=n*sp[n];
+  const H=leff/mu,Lc=L-H,W=leff>0?L/leff:0,Wc=leff>0?Lc/leff:0;
+  return{status:'ÓPTIMO',model:'M/M/M/N',kendall:`P/P/${M}/${N}`,
+   results:{M_servers:M,N_capacity:N,rho_per_server:r4(rho),p0:r6(p0),pN_rejection:r6(pN),lambda_effective:r4(leff),rejection_rate:r4(lam*pN),L:r4(L),Lc:r4(Lc),W_hours:r4(W),W_minutes:r2(W*60),Wc_hours:r4(Wc),Wc_minutes:r2(Wc*60),H:r4(H),utilization_pct:r2(rho<1?rho*100:H/M*100)},
+   state_probabilities:sp,formulas:{source:'Miranda, Colas, Cap.3'}};
+ },
+ _mmmCalc(lam,mu,M){
+  const rt=lam/mu,rho=lam/(M*mu);
+  if(rho>=1)return null;
+  let s1=0;for(let n=0;n<M;n++)s1+=rt**n/fact(n);
+  const s2=(rt**M/fact(M))*(1/(1-rho));
+  const p0=1/(s1+s2);
+  const Ce=(rt**M/fact(M))*(1/(1-rho))*p0;
+  const Lc=Ce*rho/(1-rho),H=rt,L=Lc+H,Wc=Lc/lam,W=Wc+1/mu;
+  return{p0,Ce,Lc,L,Wc,W,H,rho};
+ },
+ _econ(lam,mu,Mcur,N,ce,cs){
+  const Mmin=Math.max(1,Math.ceil(lam/mu)),Mmax=Mmin+5;
+  const comp=[];
+  for(let Mt=Math.max(1,Mmin-1);Mt<=Mmax;Mt++){
+   const rho=lam/(Mt*mu);
+   if(N===null&&rho>=1){comp.push({M:Mt,status:'INESTABLE',note:`ρ=${r3(rho)}≥1`});continue;}
+   let L,Lc,Wch;
+   if(N!==null){
+    const r=Mt>1?this._mmmn(lam,mu,Mt,N):this._mm1n(lam,mu,N);
+    L=r.results.L;Lc=r.results.Lc;Wch=r.results.Wc_hours;
+   }else if(Mt===1){
+    L=lam/(mu-lam);Lc=lam**2/(mu*(mu-lam));Wch=lam/(mu*(mu-lam));
+   }else{
+    const m=this._mmmCalc(lam,mu,Mt);
+    if(!m){comp.push({M:Mt,status:'INESTABLE'});continue;}
+    L=m.L;Lc=m.Lc;Wch=m.Wc;
+   }
+   const cw=ce*L,csv=cs*Mt,ct=cw+csv;
+   comp.push({M:Mt,status:'ESTABLE',rho:r4(rho),Wc_minutes:r2(Wch*60),Lc:r2(Lc),L:r2(L),cost_wait_per_hour:r2(cw),cost_servers_per_hour:r2(csv),cost_total_per_hour:r2(ct)});
+  }
+  const stab=comp.filter(c=>c.status==='ESTABLE');
+  if(stab.length){const opt=stab.reduce((a,b)=>a.cost_total_per_hour<b.cost_total_per_hour?a:b);opt.is_optimal=true;}
+  return{comparisons:comp,optimal_M:stab.length?stab.reduce((a,b)=>a.cost_total_per_hour<b.cost_total_per_hour?a:b).M:null};
+ },
+ _sensl(lam,mu,M){
+  const res=[];
+  for(const f of[.7,.8,.9,1,1.1,1.2,1.3]){
+   const lt=lam*f,rho=lt/(M*mu);
+   if(rho>=1){res.push({lambda_factor:f,lambda:r2(lt),rho:r4(rho),status:'INESTABLE'});continue;}
+   let L,Wc;
+   if(M===1){L=lt/(mu-lt);Wc=lt/(mu*(mu-lt));}
+   else{const m=this._mmmCalc(lt,mu,M);if(!m){res.push({lambda_factor:f,lambda:r2(lt),rho:r4(rho),status:'INESTABLE'});continue;}L=m.L;Wc=m.Wc;}
+   res.push({lambda_factor:f,lambda:r2(lt),rho:r4(rho),L:r2(L),Wc_minutes:r2(Wc*60),status:'ESTABLE'});
+  }
+  return{lambda_sensitivity:res,interpretation:'A medida que ρ se acerca a 1, la cola crece exponencialmente.'};
+ },
+ _dec(res,M,lam,mu,ce,cs){
+  const r=res.results,dec={summary:`Modelo ${res.model} resuelto. Utilización: ${r.utilization_pct||r2((r.rho||0)*100)}%.`,actions:[]};
+  dec.actions.push(`Espera promedio en cola: ${r.Wc_minutes} minutos.`);
+  dec.actions.push(`Clientes en cola promedio: ${r.Lc}.`);
+  if(r.prob_wait!==undefined)dec.actions.push(`Probabilidad de esperar: ${r2(r.prob_wait*100)}%.`);
+  const ec=res.economic_analysis;
+  if(ec&&ec.optimal_M){
+   if(ec.optimal_M>M)dec.actions.push(`⬆️ Agregar ${ec.optimal_M-M} servidor(es) (de ${M} a ${ec.optimal_M}).`);
+   else if(ec.optimal_M<M)dec.actions.push(`⬇️ Se podrían reducir servidores de ${M} a ${ec.optimal_M}.`);
+   else dec.actions.push(`✅ La cantidad actual de ${M} servidores es óptima.`);
+  }
+  return dec;
+ }
+};
+
+function fact(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r;}
+function r0(v){return Math.round(v);}
+function r1(v){return Math.round(v*10)/10;}
+function r2(v){return Math.round(v*100)/100;}
+function r3(v){return Math.round(v*1000)/1000;}
+function r4(v){return Math.round(v*10000)/10000;}
+function r6(v){return Math.round(v*1000000)/1000000;}
+
+// ─── MULTI-PERIOD PRODUCTION-INVENTORY DETECTION & FORMULATION ──
+function isMultiPeriodPlan(txt){
+ const tl=txt.toLowerCase();
+ const hasPeriods=(tl.match(/mes\s*\d/g)||[]).length>=2||(tl.match(/per[ií]odo\s*\d/g)||[]).length>=2||(tl.match(/semana\s*\d/g)||[]).length>=2;
+ const hasVarDemand=(tl.match(/mes\s*\d\s*:\s*[\d.,]+/g)||[]).length>=2||(tl.match(/per[ií]odo\s*\d\s*:\s*[\d.,]+/g)||[]).length>=2;
+ const hasProdCap=/capacidad\s*(?:m[áa]xima)?\s*(?:de\s+)?producci[oó]n|producci[oó]n\s*(?:m[áa]xima)?\s*(?:mensual|semanal)/i.test(tl);
+ const hasInvCost=/(?:costo\s+de\s+)?almacen/i.test(tl);
+ const hasMinObj=/minimizar|menor\s+costo|m[ií]nimo|al\s+menor\s+costo/i.test(tl);
+ const hasHorizon=/horizonte|planificaci[oó]n|plan\s+de\s+producci[oó]n/i.test(tl);
+ return (hasPeriods||hasVarDemand)&&(hasProdCap||hasInvCost)&&(hasMinObj||hasHorizon);
+}
+
+function formulateMultiPeriodLP(txt){
+ // Handle Spanish number format: 1.500 = 1500, but 1,5 = 1.5
+ // Strategy: replace dots in numbers that are thousand separators (followed by 3 digits)
+ const normalizeNums=(s)=>s.replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2').replace(/,/g,'.');
+ const tl=normalizeNums(txt.toLowerCase());
+ const pn=v=>parseFloat(v.toString().replace(',','.'));
+
+ // Detect period label (mes/período/semana)
+ let periodLabel='mes';
+ if(/per[ií]odo\s*\d/i.test(txt))periodLabel='período';
+ if(/semana\s*\d/i.test(txt))periodLabel='semana';
+ const plRx=periodLabel==='período'?'per[ií]odo':periodLabel==='semana'?'semana':'mes';
+
+ // Extract demands per period — careful not to match "final del mes 4: 200"
+ const demands={};
+ // Collect ALL "mes N: VALUE" matches with context
+ const allDemRx=new RegExp('([\\wáéíóúñ]*\\s+(?:del\\s+)?)?' + plRx+'\\s*(\\d+)\\s*:\\s*([\\d.]+)\\s*(?:unidades?)?','gi');
+ let dm;while((dm=allDemRx.exec(tl))!==null){
+  const prefix=(dm[1]||'').trim().toLowerCase();
+  // Skip if preceded by "del", "final", "al final" — those refer to stock, not demand
+  if(/(?:del|final|inicio|al)$/i.test(prefix))continue;
+  const t=parseInt(dm[2]);
+  if(!demands[t])demands[t]=pn(dm[3]);
+ }
+ const T=Object.keys(demands).length;
+ if(T<2)return null;
+ const periods=Object.keys(demands).map(Number).sort((a,b)=>a-b);
+
+ // Capacity
+ const capPatterns=[
+  /capacidad\s*(?:m[áa]xima)?\s*(?:de\s+)?producci[oó]n\s*(?:mensual|semanal)?\s*:\s*([\d.]+)/i,
+  /producci[oó]n\s*(?:m[áa]xima)?\s*(?:mensual|semanal)?\s*:\s*([\d.]+)/i,
+  /(?:puedo|puede)\s+producir\s+(?:hasta|como\s+m[áa]ximo)\s+([\d.]+)/i
+ ];
+ let cap=null;
+ for(const rx of capPatterns){const m=tl.match(rx);if(m){cap=pn(m[1]);break;}}
+
+ // Production cost
+ const pcPatterns=[
+  /costo\s+de\s+producci[oó]n\s*:\s*(?:usd|\$|us\$)?\s*([\d.]+)/i,
+  /producir\s+(?:cada\s+(?:unidad|una?))\s*(?:cuesta|sale)\s*(?:usd|\$)?\s*([\d.]+)/i,
+  /(?:usd|\$)\s*([\d.]+)\s*(?:por\s+)?(?:unidad)?\s*(?:de\s+)?(?:producci[oó]n|producir)/i
+ ];
+ let pc=0;
+ for(const rx of pcPatterns){const m=tl.match(rx);if(m){pc=pn(m[1]);break;}}
+
+ // Holding cost
+ const hcPatterns=[
+  /costo\s+de\s+almacenamiento\s*:\s*(?:usd|\$|us\$)?\s*([\d.]+)/i,
+  /almacenar?\s*(?:inventario)?\s*(?:tiene|cuesta|sale)\s*(?:un\s+)?(?:costo)?\s*(?:usd|\$)?\s*([\d.]+)/i,
+  /(?:usd|\$)\s*([\d.]+)\s*(?:por\s+)?(?:unidad)?\s*(?:por\s+)?(?:mes|semana|a[ñn]o)?\s*(?:de\s+)?almacen/i
+ ];
+ let hc=0;
+ for(const rx of hcPatterns){const m=tl.match(rx);if(m){hc=pn(m[1]);break;}}
+
+ // Initial stock
+ const i0Patterns=[
+  /stock\s+inicial\s*(?:\([^)]*\))?\s*:\s*([\d.]+)/i,
+  /inventario\s+inicial\s*(?:\([^)]*\))?\s*:\s*([\d.]+)/i,
+  /(?:inicio|comienzo)\s*(?:del)?\s*(?:mes|per[ií]odo)\s*\d?\s*\)?\s*:\s*([\d.]+)/i,
+  /(?:tengo|hay|dispongo)\s*(?:de\s+)?([\d.]+)\s*(?:unidades?)?\s*(?:en\s+)?(?:stock|inventario)\s*(?:inicial|al\s+inicio)/i
+ ];
+ let I0=0;
+ for(const rx of i0Patterns){const m=tl.match(rx);if(m){I0=pn(m[1]);break;}}
+
+ // Final stock requirement
+ const ifPatterns=[
+  /stock\s+final\s*(?:m[ií]nimo)?\s*(?:requerido)?\s*(?:\([^)]*\))?\s*:\s*([\d.]+)/i,
+  /inventario\s+final\s*(?:m[ií]nimo)?\s*(?:requerido)?\s*:\s*([\d.]+)/i,
+  /(?:al\s+)?final\s*(?:del)?\s*(?:mes|per[ií]odo)\s*\d+\s*:\s*([\d.]+)/i,
+  /(?:quedar|terminar)\s*(?:con)?\s*(?:al\s+menos\s+)?([\d.]+)\s*(?:unidades?)?\s*(?:en\s+)?(?:stock|inventario)/i
+ ];
+ let IF=0;
+ for(const rx of ifPatterns){const m=tl.match(rx);if(m){IF=pn(m[1]);break;}}
+
+ // ── Build LP formulation ──
+ // Variables: x_t = production in period t
+ // Inventory balance: I_t = I_{t-1} + x_t - d_t = I0 + sum(x_1..x_t) - sum(d_1..d_t)
+ // Objective: MIN sum(pc*x_t) + hc*sum(I_t)
+ // After substitution: coeff of x_t = pc + hc*(T - idx_t)  where idx_t is 0-based index from end
+ // i.e., for t-th period (1-indexed): coeff = pc + hc*(T - t + 1)
+
+ const oc={};
+ for(let t=1;t<=T;t++){
+  const pIdx=periods.indexOf(t);
+  oc[`x_${periodLabel}${t}`]=pc+hc*(T-pIdx);
+ }
+
+ const cs=[];
+ // Capacity constraints
+ if(cap){
+  for(let t=1;t<=T;t++){
+   const coeffs={};
+   for(let s=1;s<=T;s++) coeffs[`x_${periodLabel}${s}`]=(s===t)?1:0;
+   cs.push({name:`Capacidad ${periodLabel} ${t}`,coeffs,sense:'<=',rhs:cap});
+  }
+ }
+
+ // Inventory non-negativity + final stock
+ let cumD=0;
+ for(let t=1;t<=T;t++){
+  cumD+=(demands[t]||0);
+  const coeffs={};
+  for(let s=1;s<=T;s++) coeffs[`x_${periodLabel}${s}`]=(s<=t)?1:0;
+  const minStock=(t===T)?IF:0;
+  const rhs=cumD-I0+minStock;
+  cs.push({name:t===T?`Stock final ≥ ${IF}`:`Stock ${periodLabel} ${t} ≥ 0`,coeffs,sense:'>=',rhs});
+ }
+
+ // Constant term for true objective
+ let cumDSum=0,cd=0;
+ for(let t=1;t<=T;t++){cd+=(demands[t]||0);cumDSum+=cd;}
+ const objConstant=hc*(T*I0-cumDSum);
+
+ return{
+  objective_type:'MIN',objective_coefficients:oc,constraints:cs,
+  _meta:{type:'multiperiod',periodLabel,T,demands,capacity:cap,prod_cost:pc,hold_cost:hc,I0,IF,obj_constant:objConstant,periods}
+ };
+}
+
+function fmtConfirmMultiPeriod(spec){
+ const m=spec._meta,pl=m.periodLabel;
+ const capPl=pl.charAt(0).toUpperCase()+pl.slice(1);
+ let s=`**Problema de Producción-Inventario Multi-período detectado**\n\n`;
+ s+=`Identifico un problema de **planificación de producción** con ${m.T} ${pl}es:\n\n`;
+ s+=`| ${capPl} | Demanda |\n|-----|---------|\n`;
+ for(let t=1;t<=m.T;t++){
+  s+=`| ${t} | ${(m.demands[t]||0).toLocaleString('es-AR')} un |\n`;
+ }
+ s+='\n**Parámetros:**\n';
+ if(m.capacity)s+=`- Capacidad máx. producción: ${m.capacity.toLocaleString('es-AR')} un/${pl}\n`;
+ s+=`- Costo producción: $${m.prod_cost}/un\n`;
+ s+=`- Costo almacenamiento: $${m.hold_cost}/un/${pl}\n`;
+ s+=`- Stock inicial: ${m.I0.toLocaleString('es-AR')} un\n`;
+ if(m.IF>0)s+=`- Stock final requerido: ≥ ${m.IF.toLocaleString('es-AR')} un\n`;
+ s+='\n**Formulación LP:**\n';
+ s+=`MIN Z = ${Object.entries(spec.objective_coefficients).map(([v,c])=>`${c}·${v.replace('x_','').charAt(0).toUpperCase()+v.replace('x_','').slice(1)}`).join(' + ')}`;
+ if(spec._meta.obj_constant!==0)s+=` + (${r0(spec._meta.obj_constant)})`;
+ s+='\n\nSujeto a restricciones de capacidad, balance de inventario y stock final.\n';
+ s+='\n¿Resuelvo? Puedo **resolver** o ajustar datos.';
+ return s;
+}
+
+function fmtMultiPeriodSolution(res){
+ const m=session.params._meta,pl=m.periodLabel;
+ const capPl=pl.charAt(0).toUpperCase()+pl.slice(1);
+ if(res.status!=='ÓPTIMO')return null;
+
+ // Calculate inventory schedule
+ const vals=res.variable_values;
+ const schedule=[];
+ let stock=m.I0;
+ let totalProd=0,totalHold=0;
+ for(let t=1;t<=m.T;t++){
+  const prod=vals[`x_${pl}${t}`]||0;
+  const dem=m.demands[t]||0;
+  stock=stock+prod-dem;
+  totalProd+=prod;
+  totalHold+=stock;
+  schedule.push({t,prod:r0(prod),demand:r0(dem),stock_end:r0(stock)});
+ }
+ const prodCost=m.prod_cost*totalProd;
+ const holdCost=m.hold_cost*totalHold;
+ const totalCost=prodCost+holdCost;
+
+ let s=`✅ **Plan de Producción Óptimo** — ${m.T} ${pl}es\n\n`;
+ s+=`**Costo total mínimo: $${r0(totalCost).toLocaleString('es-AR')}**\n\n`;
+ s+=`| ${capPl} | Producción | Demanda | Stock final |\n|-----|-----------|---------|-------------|\n`;
+ s+=`| 0 | — | — | ${m.I0.toLocaleString('es-AR')} (inicial) |\n`;
+ schedule.forEach(r=>{
+  const capUtil=m.capacity?` (${r2(r.prod/m.capacity*100)}%)`:'';
+  s+=`| ${r.t} | ${r.prod.toLocaleString('es-AR')}${capUtil} | ${r.demand.toLocaleString('es-AR')} | ${r.stock_end.toLocaleString('es-AR')} |\n`;
+ });
+ s+='\n**Desglose de costos:**\n';
+ s+=`- Producción: ${r0(totalProd).toLocaleString('es-AR')} un × $${m.prod_cost} = **$${r0(prodCost).toLocaleString('es-AR')}**\n`;
+ s+=`- Almacenamiento: ${r0(totalHold).toLocaleString('es-AR')} un·${pl} × $${m.hold_cost} = **$${r0(holdCost).toLocaleString('es-AR')}**\n`;
+ s+=`- **Total: $${r0(totalCost).toLocaleString('es-AR')}**\n`;
+
+ // Insights
+ s+='\n**Análisis:**\n';
+ const atCap=schedule.filter(r=>m.capacity&&Math.abs(r.prod-m.capacity)<1);
+ if(atCap.length===m.T)s+=`• Se requiere producir a **capacidad máxima todos los ${pl}es**.\n`;
+ else if(atCap.length>0)s+=`• Producción a capacidad máxima en ${pl}(es): ${atCap.map(r=>r.t).join(', ')}.\n`;
+ const minStock=Math.min(...schedule.map(r=>r.stock_end));
+ const maxStock=Math.max(...schedule.map(r=>r.stock_end));
+ s+=`• Stock mínimo: ${r0(minStock).toLocaleString('es-AR')} un (${pl} ${schedule.find(r=>r.stock_end===minStock).t}). `;
+ s+=`Stock máximo: ${r0(maxStock).toLocaleString('es-AR')} un (${pl} ${schedule.find(r=>r.stock_end===maxStock).t}).\n`;
+ const totalDem=Object.values(m.demands).reduce((a,b)=>a+b,0);
+ if(m.capacity&&totalDem+m.IF-m.I0>m.capacity*m.T*0.95)
+  s+=`• ⚠️ La demanda total (${r0(totalDem).toLocaleString('es-AR')}) está muy cerca de la capacidad total (${r0(m.capacity*m.T).toLocaleString('es-AR')}). Poco margen.\n`;
+
+ s+='\n---\n_Preguntá sobre **sensibilidad**, pedí **explicar el modelo**, o iniciá un **nuevo problema**._';
+ return s;
+}
+
+// ─── PARAMETER EXTRACTION ───────────────────────────────────
+function extractStock(t){
+ const tl=t.toLowerCase().replace(/,/g,'.'),p={};
+ const m=(rx)=>{const r=tl.match(rx);return r?parseFloat(r[1].replace(',','.')):null;};
+ // Demand — many natural patterns
+ const D=m(/(?:vendo|consumo|demanda|venta|uso|gasto|necesito)\s*(?:de\s+)?(?:unas?\s+)?(?:como\s+)?([\d.]+)/)||
+  m(/([\d.]+)\s*(?:unidades?|un\.?|piezas?|cajas?|bolsas?|kg|litros?)\s*(?:por\s+)?(?:al?\s+)?(?:a[ñn]o|mes|semana|d[ií]a)/)||
+  m(/demanda\s*(?:anual|mensual|diaria|semanal)?\s*(?:de\s+)?\s*(?:es\s+de\s+)?([\d.]+)/)||
+  m(/(?:se\s+)?(?:venden?|consumen?|usan?)\s*(?:unas?\s+)?(?:como\s+)?([\d.]+)/);
+ if(D)p.demand_D=D;
+ // Order cost — flexible
+ const k=m(/(?:pedido|pedir|orden).*?(?:gasto|cuesta|costo|sale)\s*(?:como\s*)?\$?\s*([\d.]+)/)||
+  m(/(?:gasto|cuesta|sale)\s*(?:como\s*)?\$?\s*([\d.]+).*?(?:flete|papeleo|pedido|env[ií]o|transporte)/)||
+  m(/costo\s*(?:de\s+)?(?:pedido|orden|pedir)\s*:?\s*\$?\s*([\d.]+)/)||
+  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:cada\s+)?pedido/);
+ if(k)p.order_cost_k=k;
+ // Holding cost
+ const c1=m(/almacenar.*?(?:cuesta|costo)\s*(?:m[aá]s\s+o\s+menos\s*)?\$?\s*([\d.]+)/)||
+  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad\s+)?(?:por\s+)?(?:a[ñn]o|mes)?\s*(?:de\s+)?(?:almac|stock|mantener|guardar|depositar)/)||
+  m(/(?:mantener|guardar|almacenar|tener\s+en\s+stock)\s*(?:cada\s+)?(?:una?\s+)?(?:unidad\s+)?(?:cuesta|sale|vale)\s*\$?\s*([\d.]+)/)||
+  m(/costo\s*(?:de\s+)?(?:almacen|mantenim|stock)\w*\s*:?\s*\$?\s*([\d.]+)/);
+ if(c1)p.holding_cost_c1=c1;
+ // Acquisition cost
+ const b2=m(/(?:me\s+)?(?:sale|cuesta|vale|compro\s+a)\s*\$?\s*([\d.]+)\s*(?:cada\s+un[oa]|por\s+unidad|c\/u)?/)||
+  m(/(?:precio\s+(?:unitario|de\s+compra|de\s+adquisición))\s*:?\s*\$?\s*([\d.]+)/)||
+  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad|cada\s+un[oa]|c\/u)/);
+ if(b2)p.acquisition_cost_b=b2;
+ // Lead time
+ const lt=m(/(?:tarda|demora|entrega|llega|demoran?|tardan?)\s*(?:unos?\s*)?([\d.]+)\s*d[ií]as/)||
+  m(/([\d.]+)\s*d[ií]as?\s*(?:de\s+)?(?:en\s+)?(?:entreg|llegar|demora|espera)/)||
+  m(/(?:plazo|tiempo)\s*(?:de\s+)?(?:entrega|reposición|envío)\s*:?\s*([\d.]+)\s*d[ií]as/);
+ if(lt)p.lead_time_LT=lt/365;
+ // Shortage cost
+ const c2=m(/(?:costo\s+(?:de\s+)?(?:faltante|escasez|agotamiento|ruptura))\s*:?\s*\$?\s*([\d.]+)/)||
+  m(/(?:faltante|escasez)\s*(?:cuesta|sale)\s*\$?\s*([\d.]+)/);
+ if(c2)p.shortage_cost_c2=c2;
+ return p;
+}
+function extractQueue(t){
+ const tl=t.toLowerCase().replace(/\./g,'').replace(/,/g,'.');
+ const normalizeNums=(s)=>s.replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2').replace(/,/g,'.');
+ const tln=normalizeNums(t.toLowerCase());
+ const p={};
+ const m=(rx)=>{const r=tln.match(rx);return r?parseFloat(r[1].replace(',','.')):null;};
+
+ // ── Arrival rate (λ) ──
+ const lam=m(/([\d.]+)\s*(?:clientes?|personas?|pacientes?|autos?|veh[ií]culos?|llamadas?|usuarios?)\s*(?:por|\/)\s*hora/)||
+  m(/llegan?\s*(?:en\s+promedio\s+)?(?:unos?\s+)?([\d.]+)\s*(?:clientes?|personas?|pacientes?)?\s*(?:por|\/)\s*hora/)||
+  m(/(?:tasa\s+de\s+llegada|arribo|λ|lambda)\s*:?\s*(?:de\s+)?([\d.]+)/)||
+  m(/(?:demanda|llegada)\s*(?:de\s+)?(?:pacientes?|clientes?)?\s*:?.*?(?:en\s+promedio\s*,?\s*)?(?:llegan?\s*)?(?:en\s+promedio\s+)?([\d.]+)\s*(?:pacientes?|clientes?|personas?)?\s*(?:por|\/)\s*hora/)||
+  m(/(?:cada\s+hora\s+)?(?:llegan?|entran?|arriban?|vienen?)\s*(?:en\s+promedio\s+)?(?:unos?\s+)?([\d.]+)/);
+ if(lam)p.arrival_rate_lambda=lam;
+
+ // ── Service rate (μ) — handle both rate and time ──
+ let mu=m(/(?:atiende[n]?|procesa[n]?|sirve[n]?)\s*(?:en\s+promedio\s+)?(?:a\s+)?(?:unos?\s+)?([\d.]+)\s*(?:clientes?|personas?|pacientes?)?\s*(?:por|\/)\s*hora/)||
+  m(/(?:tasa\s+de\s+servicio|μ|mu)\s*:?\s*(?:de\s+)?([\d.]+)/)||
+  m(/(?:capacidad|velocidad)\s*(?:de\s+)?(?:atención|servicio)\s*:?\s*([\d.]+)\s*(?:por|\/)\s*hora/);
+ if(mu){p.service_rate_mu=mu;}
+ else{
+  // Try time-based: "tarda N minutos en atender"
+  const svcTime=m(/(?:tarda|demora|dura|lleva|toma)\s*(?:en\s+promedio\s+)?(?:unos?\s+)?([\d.]+)\s*(?:minutos?|min)\s*(?:en\s+)?(?:atender|procesar|servir|cada|por)/)||
+   m(/(?:tiempo\s+(?:de\s+)?(?:atención|servicio|consulta))\s*(?:promedio)?\s*:?\s*(?:de\s+)?(?:unos?\s+)?([\d.]+)\s*(?:minutos?|min)/)||
+   m(/(?:atención|servicio|consulta)\s*(?:dura|tarda|toma|lleva)\s*(?:en\s+promedio\s+)?([\d.]+)\s*(?:minutos?|min)/)||
+   m(/(?:cada\s+)?(?:m[ée]dico|cajero|servidor|empleado|operador)\s*(?:tarda|demora)\s*(?:en\s+promedio\s+)?([\d.]+)\s*(?:minutos?|min)/)||
+   m(/([\d.]+)\s*(?:minutos?|min)\s*(?:en\s+promedio\s+)?(?:por\s+)?(?:paciente|cliente|persona|atención|servicio|consulta)/);
+  if(svcTime&&svcTime>0)p.service_rate_mu=Math.round(60/svcTime*1000)/1000;
+  else{
+   // Try hours: "tarda 0.25 horas"
+   const svcH=m(/(?:tarda|demora|dura)\s*(?:en\s+promedio\s+)?([\d.]+)\s*(?:horas?|hs?)\s*(?:en\s+)?(?:atender|procesar|servir)/);
+   if(svcH&&svcH>0)p.service_rate_mu=Math.round(1/svcH*1000)/1000;
+  }
+ }
+
+ // ── Number of servers (M) ── may be absent if user wants to optimize
+ const sv=tln.match(/([\d]+)\s*(?:cajeros?|servidores?|ventanillas?|cajas?|empleados?|operadores?|agentes?|m[ée]dicos?|doctores?|puestos?|enfermeros?)/);
+ const sv2=tln.match(/(?:tengo|hay|cuento\s+con|tiene|disponemos\s+de)\s*(?:unos?\s+)?([\d]+)\s*(?:cajeros?|servidores?|ventanillas?|cajas?|empleados?|m[ée]dicos?|puestos?)/);
+ // Check if this is about finding optimal M
+ const findM=/cu[áa]ntos?\s*(?:m[ée]dicos?|cajeros?|servidores?|empleados?|ventanillas?|puestos?)|definir\s+cu[áa]ntos|determinar\s+cu[áa]ntos|necesito\s+m[áa]s|debo\s+tener|optimizar.*(?:servidores?|m[ée]dicos?|cajeros?)/i.test(tln);
+ if(sv2){p.num_servers_M=Math.round(parseFloat(sv2[1]));}
+ else if(sv&&!findM){p.num_servers_M=Math.round(parseFloat(sv[1]));}
+ // If findM is true and no M given, we'll handle it in checkAndAsk with economic analysis
+ if(findM)p._find_optimal_M=true;
+
+ // ── Cost of waiting (ce) ── per patient per hour in system
+ const ce=m(/(?:usd|\$)\s*([\d.]+)\s*(?:por\s+)?(?:paciente|cliente|persona)\s*(?:por\s+)?(?:hora)?\s*(?:de\s+)?(?:espera|en\s+el\s+sistema)/)||
+  m(/(?:costo\s+)?(?:asociado\s+)?(?:a\s+)?(?:la\s+)?(?:espera|insatisfacci[oó]n|p[ée]rdida)\s*(?:de\s+los\s+pacientes?)?\s*(?:\([^)]*\))?\s*:?\s*(?:estimado\s+en\s+)?(?:usd|\$)\s*([\d.]+)\s*(?:por\s+)?(?:paciente|cliente|persona)\s*(?:por\s+)?hora/)||
+  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:cada\s+)?(?:paciente|cliente|persona)?\s*(?:por\s+)?hora\s*(?:de\s+)?(?:espera|promedio)/)||
+  m(/(?:espera|satisfacci[oó]n|p[ée]rdida|insatisfacci[oó]n|abandono)\s*(?:[\s\S]*?)(?:usd|\$)\s*([\d.]+)\s*(?:por\s+)?(?:paciente|cliente)?\s*(?:por\s+)?hora/)||
+  m(/costo\s*(?:de\s+)?(?:espera|insatisfacci[oó]n)\s*:?\s*(?:usd|\$)?\s*([\d.]+)/);
+ if(ce)p.cost_per_wait_ce=ce;
+
+ // ── Cost per server (cs) ── per hour
+ const cs=m(/(?:costo\s+(?:por\s+)?(?:de\s+)?)?(?:m[ée]dico|cajero|servidor|empleado|ventanilla|puesto|operador)\s*:?\s*(?:usd|\$)\s*([\d.]+)\s*(?:por\s+|\/)?hora/)||
+  m(/(?:usd|\$)\s*([\d.]+)\s*(?:por\s+|\/)?hora\s*(?:por\s+)?(?:cada\s+)?(?:m[ée]dico|cajero|servidor|empleado)/)||
+  m(/(?:cada\s+)?(?:m[ée]dico|cajero|servidor|empleado)\s*(?:me\s+)?(?:cuesta|sale|vale|cobra)\s*(?:usd|\$)?\s*([\d.]+)\s*(?:por\s+|\/)?hora/)||
+  m(/costo\s*(?:por\s+)?(?:de\s+)?(?:m[ée]dico|cajero|servidor|empleado)\s*(?:es\s+(?:de\s+)?)?:?\s*(?:usd|\$)\s*([\d.]+)\s*(?:por\s+|\/)?hora/)||
+  m(/costo\s*(?:por\s+)?(?:de\s+)?(?:m[ée]dico|cajero|servidor)\s*:?\s*(?:usd|\$)?\s*([\d.]+)/);
+ if(cs)p.cost_per_server_cs=cs;
+
+ return p;
+}
+
+// ─── CONVERSATIONAL ENGINE ──────────────────────────────────
+const LPKW=['producir','fabricar','mezcla','asignar','maximizar','minimizar','ganancia','restricciones','recursos','horas disponibles','maquinado','programación lineal','simplex','función objetivo','tratamiento','mano de obra','materia prima','presupuesto','panadería','panaderia','fábrica','fabrica','taller','planta','cuánto producir','cuanto producir','precio de venta','costo variable','kg de harina','para producir','necesito','disponibles por día','por día','por dia','unidades de','torta','medialuna','pieza','artículo','producto'];
+const STKW=['inventario','stock','pedir','pedido','almacén','almacenar','proveedor','reposición','lote','eoq','faltante','demanda anual','costo de pedido','costo de almacenamiento','punto de reorden','cuánto pedir','cada cuánto','lead time','depósito','deposito','bodega','comprar','reabastecer','cuántas unidades pedir','cuantas unidades'];
+const QKWK=['cola','fila','espera','cajero','servidor','ventanilla','atención','clientes por hora','tasa de llegada','tasa de servicio','tiempo de espera','cuántos cajeros','cuántas cajas','banco','hospital','peaje','call center','supermercado','turnero','filas de espera','atiende','llegan','paciente','médico','medico','clínica','clinica','consultorio','tarda','demora','en atender','por hora'];
+
+let session={module:null,subtype:null,params:{},assumptions:[],stage:'detect',solution:null,history:[]};
+
+function detectMod(t){
+ const tl=t.toLowerCase();
+ const sc={LP:LPKW.filter(k=>tl.includes(k)).length,STOCK:STKW.filter(k=>tl.includes(k)).length,QUEUE:QKWK.filter(k=>tl.includes(k)).length};
+ const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
+ return best[1]>0?{mod:best[0],conf:best[1]/Math.max(1,Object.values(sc).reduce((a,b)=>a+b,0))}:{mod:null,conf:0};
+}
+
+function processMsg(txt){
+ const S=session,tl=txt.toLowerCase();
+ S.history.push({role:'user',content:txt});
+
+ if(S.stage==='detect'){
+  // Check number selection
+  if(txt.trim()==='1'){S.module='LP';S.stage='collect';return 'Perfecto, **Programación Lineal**. Describí tu problema con los datos: productos, ganancias por unidad, recursos limitados y cuánto consume cada producto de cada recurso.';}
+  if(txt.trim()==='2'){S.module='STOCK';S.stage='collect';return 'Perfecto, **Inventarios**. Describí tu problema con: demanda anual, costo de pedido, costo de almacenamiento, precio unitario y tiempo de entrega.';}
+  if(txt.trim()==='3'){S.module='QUEUE';S.stage='collect';return 'Perfecto, **Teoría de Colas**. Describí tu problema con: clientes por hora, tiempo de servicio, cantidad de servidores y costos.';}
+
+  // Check for multi-period production-inventory problems FIRST
+  if(isMultiPeriodPlan(txt)){
+   S.module='LP';S.stage='lp_input';
+   const spec=formulateMultiPeriodLP(txt);
+   if(spec){S.params=spec;S.stage='confirm';updUI();return fmtConfirmMultiPeriod(spec);}
+  }
+
+  const d=detectMod(txt);
+  if(d.mod&&d.conf>=.15){
+   S.module=d.mod;S.stage='collect';
+   // Extract params from first message
+   if(d.mod==='STOCK')Object.assign(S.params,extractStock(txt));
+   if(d.mod==='QUEUE')Object.assign(S.params,extractQueue(txt));
+   if(d.mod==='LP'){S.params._raw=txt;S.stage='lp_input';return processLPInput(txt);}
+   // Check if we have enough to confirm
+   return checkAndAsk();
+  }
+  return '¿Qué tipo de problema querés resolver?\n\n1. **Programación Lineal** — Decidir cuánto producir/asignar con recursos limitados.\n2. **Inventarios/Stocks** — Cuánto pedir y cada cuánto.\n3. **Teoría de Colas** — Tiempos de espera, cuántos servidores necesitás.\n\nElegí un número o describí tu problema con detalle.';
+ }
+
+ if(S.stage==='collect'){
+  // Check if this is actually a multi-period LP problem (even if user chose Inventarios)
+  if(isMultiPeriodPlan(txt)){
+   S.module='LP';S.params={};
+   const spec=formulateMultiPeriodLP(txt);
+   if(spec){S.params=spec;S.stage='confirm';updUI();return fmtConfirmMultiPeriod(spec);}
+  }
+  // If user is trying to confirm/solve from collect stage (came back from confirm)
+  if(/\b(?:nada|todo\s+bien|está\s+bien|esta\s+bien)\b.*\b(?:resolv|dale|ok|calcul|listo)/i.test(tl)||
+     /\b(?:resolv|dale|calcul|listo)\b.*\b(?:nada|así|asi|todo\s+bien)/i.test(tl)){
+   if(S.module==='STOCK'||S.module==='QUEUE'){
+    S.stage='solved';
+    return doSolve();
+   }
+  }
+  // Handle bare number responses — assign to the next missing parameter
+  const bareNum=txt.trim().replace(/[\$usd\s]/gi,'').replace(/,/g,'.');
+  const isNum=/^[\d.]+$/.test(bareNum)&&!isNaN(parseFloat(bareNum));
+  if(isNum){
+   const val=parseFloat(bareNum);
+   if(S.module==='STOCK'){
+    const stockNeed=['demand_D','order_cost_k','holding_cost_c1','acquisition_cost_b'];
+    for(const k of stockNeed){
+     if(S.params[k]===undefined){S.params[k]=val;break;}
+    }
+   }
+   if(S.module==='QUEUE'){
+    const queueNeed=['arrival_rate_lambda','service_rate_mu','num_servers_M'];
+    for(const k of queueNeed){
+     if(S.params[k]===undefined){S.params[k]=k==='num_servers_M'?Math.round(val):val;break;}
+    }
+   }
+  }else{
+   // Try natural language extraction
+   if(S.module==='STOCK'){Object.assign(S.params,extractStock(txt));handleStockYN(tl);}
+   if(S.module==='QUEUE'){Object.assign(S.params,extractQueue(txt));handleQueueYN(tl);}
+  }
+  return checkAndAsk();
+ }
+
+ if(S.stage==='lp_input'){
+  // Accumulate text from multiple messages for better parsing
+  if(S.params._raw) S.params._raw+='\n'+txt;
+  else S.params._raw=txt;
+  return processLPInput(S.params._raw);
+ }
+
+ if(S.stage==='confirm'){
+  if(/(?:^|\s|,)s[ií](?:\s|$|[,\.!])|correcto|dale|\bok\b|resolv|adelante|confirm|listo|perfect|vamos|calcul/i.test(tl)){
+   S.stage='solved';
+   return doSolve();
+  }
+  if(S.module==='LP'){S.stage='lp_input';return processLPInput(txt);}
+  S.stage='collect';
+  return 'Entendido. ¿Qué dato querés ajustar?';
+ }
+
+ if(S.stage==='solved'){
+  if(/sensibilidad|qué pasa si|cambiar|variar/i.test(tl)) return fmtSensitivity();
+  if(/nuevo|otro|empezar/i.test(tl)){session={module:null,subtype:null,params:{},assumptions:[],stage:'detect',solution:null,history:[]};updUI();return 'Perfecto, empezamos de nuevo. Describí tu problema.';}
+  if(/explic|modelo|fórmula|formula/i.test(tl)) return fmtFormulas();
+  return 'Problema resuelto. Podés:\n- Preguntar sobre **sensibilidad**\n- Pedir que **explique el modelo**\n- Iniciar un **nuevo problema**';
+ }
+ return 'Describí tu problema operativo.';
+}
+
+function handleStockYN(tl){
+ if(/nunca|no falt|siempre tener|no puede/i.test(tl)){session.params.shortage_cost_c2=null;session.assumptions.push('No se admiten faltantes.');}
+ if(/colchón|seguridad|sí.*protección/i.test(tl)){
+  const D=session.params.demand_D||0;
+  if(D>0&&!session.params.safety_stock_Sp){const Sp=Math.round(3*D/365);session.params.safety_stock_Sp=Sp;session.assumptions.push(`Stock protección: ${Sp} un (≈3 días demanda).`);}
+ }
+ if(/no.*seguridad|no.*colchón|confío/i.test(tl)){session.params.safety_stock_Sp=0;}
+}
+function handleQueueYN(tl){
+ if(/sin límite|puede crecer|no hay límite/i.test(tl)){session.params.system_capacity_N=null;session.assumptions.push('Capacidad infinita.');}
+}
+
+function checkAndAsk(){
+ const S=session,p=S.params;
+ if(S.module==='STOCK'){
+  const need=[['demand_D','¿Cuántas unidades vendés o consumís por año?','La demanda anual (D) es el parámetro central del EOQ.'],['order_cost_k','¿Cuánto cuesta hacer un pedido? (flete + admin)','El costo de pedido (k) determina cuántos pedidos conviene hacer.'],['holding_cost_c1','¿Cuánto cuesta mantener una unidad en stock por año?','El costo de almacenamiento (c₁) penaliza tener mucho stock.'],['acquisition_cost_b','¿Cuál es el precio unitario de compra?','El precio (b) impacta el costo total.']];
+  for(const[k,q,w]of need){if(p[k]===undefined)return `**${q}**\n\n_(${w})_`;}
+  // All required present, go to confirm
+  p.planning_horizon_T=p.planning_horizon_T||1;
+  p.safety_stock_Sp=p.safety_stock_Sp||0;
+  if(p.shortage_cost_c2===undefined)p.shortage_cost_c2=null;
+  if(!p.lead_time_LT)p.lead_time_LT=0;
+  if(!S.assumptions.includes('Demanda constante e independiente.'))S.assumptions.push('Demanda constante e independiente.','Reposición instantánea.');
+  S.stage='confirm';
+  return fmtConfirm();
+ }
+ if(S.module==='QUEUE'){
+  // Base requirements: always need λ and μ
+  const baseNeed=[['arrival_rate_lambda','¿Cuántos clientes llegan por hora en promedio?','La tasa de llegada (λ) define la demanda del sistema.'],['service_rate_mu','¿Cuántos clientes atiende un servidor por hora?','La tasa de servicio (μ) determina la capacidad.']];
+  for(const[k,q,w]of baseNeed){if(p[k]===undefined)return `**${q}**\n\n_(${w})_`;}
+  // If finding optimal M: need costs instead of M
+  if(p._find_optimal_M&&p.num_servers_M===undefined){
+   const costNeed=[['cost_per_wait_ce','¿Cuánto cuesta la espera por cliente por hora? (ce)','El costo de espera por cliente por hora permite evaluar el trade-off.'],['cost_per_server_cs','¿Cuánto cuesta un servidor por hora? (cs)','El costo por servidor por hora define el trade-off contra espera.']];
+   for(const[k,q,w]of costNeed){if(p[k]===undefined)return `**${q}**\n\n_(${w})_`;}
+   // Auto-set M to minimum viable for solve, economic analysis will find optimal
+   const Mmin=Math.ceil(p.arrival_rate_lambda/p.service_rate_mu);
+   p.num_servers_M=Mmin;
+   if(!S.assumptions.includes('Llegadas Poisson, servicio exponencial.'))S.assumptions.push('Llegadas Poisson, servicio exponencial.','Disciplina FIFO.','Se busca M óptimo vía análisis económico.');
+   S.stage='confirm';
+   return fmtConfirmQueueOptM();
+  }
+  // Normal case: need M
+  if(p.num_servers_M===undefined)return `**¿Cuántos servidores (cajeros/ventanillas) tenés?**\n\n_(M cambia el modelo: M=1 es M/M/1, M>1 es M/M/M.)_`;
+  if(!S.assumptions.includes('Llegadas Poisson, servicio exponencial.'))S.assumptions.push('Llegadas Poisson, servicio exponencial.','Disciplina FIFO.');
+  S.stage='confirm';
+  return fmtConfirm();
+ }
+ return 'Describí tu problema con más detalle.';
+}
+
+// ─── LP INPUT PARSER (NLP-capable) ──────────────────────────
+function processLPInput(txt){
+ const S=session;
+ const tl=txt.toLowerCase().replace(/,/g,'.');
+ let objType='MAX';
+ if(/minim|menor\s+costo|reducir/i.test(tl))objType='MIN';
+
+ // ── Strategy: find product blocks, resource blocks, then cross-reference ──
+ const products=[], resources={}, consumption={};
+ const pn=v=>parseFloat(v.toString().replace(',','.'));
+
+ // ── 1. Split into sentences for analysis ──
+ const sents=txt.split(/[.\n]+/).map(s=>s.trim()).filter(s=>s.length>3);
+
+ // ── 2. Find PRODUCTS — look for "para producir un/una PRODUCT" blocks ──
+ // Pattern: "Para producir un/una PRODUCT necesito: ..." or "Un/Una PRODUCT requiere..."
+ const prodBlockRx=/(?:para\s+(?:producir|hacer|fabricar)\s+(?:un[oa]?\s+)?)([\wáéíóúñ]+)/gi;
+ let pbm;
+ while((pbm=prodBlockRx.exec(tl))!==null){
+  const name=pbm[1].trim();
+  if(name.length>1&&!['que','con','los','las','del','una','uno'].includes(name)){
+   if(!products.find(p=>p.name===name))products.push({name,profit:0});
+  }
+ }
+
+ // Also: "Producto: Pan/Medialuna/Torta" or product names in price listings
+ // Pattern: "Pan:" or "Medialuna:" at start of line-like sections
+ const prodLabelRx=/^([\wáéíóúñ]+)\s*:/gmi;
+ let plm;
+ while((plm=prodLabelRx.exec(txt))!==null){
+  const name=plm[1].toLowerCase().trim();
+  if(name.length>2&&!['para','cada','mis','los','las','precio','costo','objetivo','harina','azúcar','azucar','manteca','capacidad','recurso','disponible'].includes(name)){
+   if(!products.find(p=>p.name===name))products.push({name,profit:0});
+  }
+ }
+
+ // Also detect from "pieza/producto X deja/genera $N"
+ const classicProfRx=/(?:pieza|producto|artículo)?\s*(?:la\s+)?([A-Za-záéíóúñ]+\d*)\s*(?:me\s+)?(?:deja|genera|produce|da)\s*\$?\s*([\d.,]+)/gi;
+ let cpm;
+ while((cpm=classicProfRx.exec(tl))!==null){
+  const name=cpm[1].toLowerCase().trim();
+  const profit=pn(cpm[2]);
+  const existing=products.find(p=>p.name===name);
+  if(existing)existing.profit=profit;
+  else if(name.length>0)products.push({name,profit});
+ }
+
+ // ── 3. Find RESOURCE AVAILABILITY — "Recurso: N unidades por día" ──
+ // Patterns: "Harina: 100 kg por día", "Capacidad de horno: 480 minutos por día"
+ const resRxPatterns=[
+  /([\wáéíóúñ]+(?:\s+(?:de\s+)?[\wáéíóúñ]+)*?)\s*:\s*([\d.,]+)\s*(kg|kilos?|gramos?|litros?|horas?|minutos?|min|hs?|unidades?|metros?)\s*(?:por\s+)?(d[ií]a|semana|mes|a[ñn]o|disponibles?)?/gi,
+  /([\wáéíóúñ]+(?:\s+(?:de\s+)?[\wáéíóúñ]+)*?)\s*(?:disponibles?|diarios?|total(?:es)?)\s*:\s*([\d.,]+)\s*(kg|kilos?|gramos?|litros?|horas?|minutos?|min|hs?|unidades?|metros?)/gi,
+  /(?:tengo|dispongo\s+de|cuento\s+con)\s*([\d.,]+)\s*(kg|kilos?|gramos?|litros?|horas?|minutos?|min|hs?|unidades?|metros?)\s*(?:de\s+)?([\wáéíóúñ]+(?:\s+[\wáéíóúñ]+)*?)\s*(?:por\s+)?(d[ií]a|semana|mes|a[ñn]o|disponibles?)?/gi,
+  /([\wáéíóúñ]+(?:\s+[\wáéíóúñ]+)*?)\s*\(\s*([\d.,]+)\s*(horas?|hs?|minutos?|min|kg|unidades?)\s*(?:disponibles?)?\s*\)/gi
+ ];
+
+ // First pattern: "Recurso: N unidad"
+ let rm;
+ rm=resRxPatterns[0];rm.lastIndex=0;
+ let rmm;
+ while((rmm=rm.exec(tl))!==null){
+  const rname=rmm[1].trim();
+  const val=pn(rmm[2]);
+  const unit=rmm[3]||'';
+  if(rname.length>1&&val>0&&!['precio','costo','cada','para','los','las','no','el','la','necesito','requiero','uso','consume','producto','venta','variable','objetivo','decidir','producir','puedo'].includes(rname)){
+   resources[rname]={available:val,unit};
+  }
+ }
+
+ // Third pattern: "tengo N kg de recurso"
+ rm=resRxPatterns[2];rm.lastIndex=0;
+ while((rmm=rm.exec(tl))!==null){
+  const val=pn(rmm[1]);
+  const unit=rmm[2]||'';
+  const rname=rmm[3].trim();
+  if(rname.length>1&&val>0&&!['precio','costo','cada','para','los','las','no','el','la','un','una'].includes(rname)){
+   resources[rname]={available:val,unit};
+  }
+ }
+
+ // Fourth pattern: "recurso (N horas disponibles)"
+ rm=resRxPatterns[3];rm.lastIndex=0;
+ while((rmm=rm.exec(tl))!==null){
+  const rname=rmm[1].trim();
+  const val=pn(rmm[2]);
+  const unit=rmm[3]||'';
+  if(rname.length>1&&val>0) resources[rname]={available:val,unit};
+ }
+
+ // ── 4. Find CONSUMPTION per product — "para un pan: 0.5 kg harina" ──
+ // Strategy: look for blocks after each "para producir un/una PRODUCT" and extract amounts
+ for(const prod of products){
+  consumption[prod.name]={};
+  // Find the block describing this product's consumption
+  // Pattern: everything between "para producir un pan" and next "para producir" or end
+  const escName=prod.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const blockPatterns=[
+   new RegExp(`(?:para\\s+(?:producir|hacer|fabricar)\\s+(?:un[oa]?\\s+)?${escName}[^:]*?(?:necesito|requiero|uso|consume)?\\s*:?\\s*)([\\s\\S]*?)(?=para\\s+(?:producir|hacer|fabricar)|los\\s+precios|precio\\s+de\\s+venta|no\\s+puedo|objetivo|$)`,'i'),
+   new RegExp(`(?:(?:un[oa]?\\s+)?${escName}\\s+(?:necesita|requiere|usa|consume)\\s*:?\\s*)([\\s\\S]*?)(?=(?:un[oa]?\\s+)?(?:${products.filter(p=>p.name!==prod.name).map(p=>p.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')||'XXXXXX'})\\s+(?:necesita|requiere|usa|consume)|para\\s+producir|los\\s+precios|precio\\s+de|no\\s+puedo|objetivo|$)`,'i'),
+   new RegExp(`${escName}\\s*(?:necesita|requiere|usa|consume)\\s+([^.]+)`,'i')
+  ];
+
+  for(const bp of blockPatterns){
+   const bm=tl.match(bp);
+   if(bm&&bm[1]){
+    const block=bm[1];
+    // Extract "N unit de recurso" or "N unit recurso"
+    const consRx=/([\d.,]+)\s*(kg|kilos?|gramos?|g|litros?|l|horas?|h|hs?|minutos?|min|unidades?|metros?|m)\s*(?:de\s+)?([\wáéíóúñ]+(?:\s+de\s+[\wáéíóúñ]+)?)/gi;
+    let cm;
+    while((cm=consRx.exec(block))!==null){
+     const val=pn(cm[1]);
+     const unit=cm[2];
+     const rname=cm[3].trim();
+     if(val>0&&rname.length>1&&!['cada','para','que','por','con','una','uno','del'].includes(rname)){
+      consumption[prod.name][rname]=val;
+     }
+    }
+    if(Object.keys(consumption[prod.name]).length>0)break;
+   }
+  }
+ }
+
+ // ── 5. Find PRICES/PROFITS — "Precio de venta: USD N" / "Costo variable: USD N" ──
+ // Strategy: look for price blocks per product
+ for(const prod of products){
+  const escName=prod.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  // Find block: "Pan:\n Precio de venta: USD 1.50\n Costo variable: USD 0.90"
+  const priceBlockRx=new RegExp(`${escName}\\s*:\\s*([\\s\\S]*?)(?=(?:${products.filter(p=>p.name!==prod.name).map(p=>p.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')||'XXXXXX'})\\s*:|no\\s+puedo|objetivo|$)`,'i');
+  const pbm2=tl.match(priceBlockRx);
+  if(pbm2&&pbm2[1]){
+   const block=pbm2[1];
+   const pvRx=/precio\s*(?:de\s+)?venta\s*:?\s*(?:usd|\$|us\$)?\s*([\d.,]+)/i;
+   const cvRx=/costo\s*(?:variable)?\s*:?\s*(?:usd|\$|us\$)?\s*([\d.,]+)/i;
+   const ganRx=/ganancia\s*(?:(?:por\s+)?unidad)?\s*:?\s*(?:usd|\$|us\$)?\s*([\d.,]+)/i;
+   const pvM=block.match(pvRx), cvM=block.match(cvRx), ganM=block.match(ganRx);
+   if(pvM&&cvM){
+    prod.profit=pn(pvM[1])-pn(cvM[1]);
+    prod.sell_price=pn(pvM[1]);
+    prod.var_cost=pn(cvM[1]);
+   }else if(ganM){
+    prod.profit=pn(ganM[1]);
+   }else if(pvM){
+    prod.profit=pn(pvM[1]);
+   }
+  }
+  // Also classic: "producto X deja $N", "X genera $N ganancia"
+  const classicRx=new RegExp(`${escName}\\s*(?:me\\s+)?(?:deja|genera|produce|da)\\s*(?:una\\s+(?:ganancia|utilidad)\\s+de\\s+)?\\$?\\s*([\\d.,]+)`,'i');
+  const clm=tl.match(classicRx);
+  if(clm&&prod.profit===0)prod.profit=pn(clm[1]);
+ }
+
+ // ── 6. Match consumption resource names to actual resources ──
+ // The user might say "0.5 kg de harina" and the resource is "harina: 100 kg"
+ // We need fuzzy matching
+ const resKeys=Object.keys(resources);
+ const normalizeRes=(name)=>{
+  // Basic normalization: remove accents, lowercase
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ };
+ const matchRes=(consName)=>{
+  const cn=normalizeRes(consName);
+  // Exact match
+  let found=resKeys.find(rk=>normalizeRes(rk)===cn);
+  if(found)return found;
+  // Partial match: resource key starts with or contains consumption name
+  found=resKeys.find(rk=>normalizeRes(rk).includes(cn)||cn.includes(normalizeRes(rk)));
+  if(found)return found;
+  // Substring match on first word
+  const cw=cn.split(/\s+/)[0];
+  found=resKeys.find(rk=>normalizeRes(rk).split(/\s+/)[0]===cw);
+  return found||null;
+ };
+
+ // Remap consumption keys to match actual resource keys
+ for(const prod of products){
+  const mapped={};
+  for(const[cname,val]of Object.entries(consumption[prod.name]||{})){
+   const rk=matchRes(cname);
+   if(rk) mapped[rk]=val;
+   else{
+    // The consumption mentions a resource not yet in resources — add it if we can find availability
+    // This handles cases where resource names are slightly different
+    mapped[cname]=val;
+    if(!resources[cname]) resources[cname]={available:0,unit:''};
+   }
+  }
+  consumption[prod.name]=mapped;
+ }
+
+ // ── 7. Also detect non-negativity ──
+ const hasNonNeg=/no\s*(?:puedo|se\s+puede)\s*(?:utilizar|usar)\s*m[áa]s.*?(?:disponibles|tengo)|no.*?cantidades?\s*negativas?|no\s*negativ/i.test(tl);
+
+ // ── 8. Build LP if we have enough data ──
+ const prodWithProfit=products.filter(p=>p.profit!==0||p.sell_price);
+ const resWithAvail=Object.entries(resources).filter(([k,v])=>v.available>0);
+
+ // Check if at least some products have consumption data
+ const prodsWithConsump=products.filter(p=>Object.keys(consumption[p.name]||{}).length>0);
+
+ if(products.length>=1&&(resWithAvail.length>=1||prodsWithConsump.length>=1)){
+  // We have something to work with
+  const oc={};
+  products.forEach(pr=>{
+   const varName='x_'+pr.name;
+   oc[varName]=pr.profit;
+  });
+
+  const cs2=[];
+  // Build constraints from resources
+  for(const[rname,rdata]of Object.entries(resources)){
+   if(rdata.available<=0)continue;
+   const coeffs={};
+   let hasCoeff=false;
+   products.forEach(pr=>{
+    const c=(consumption[pr.name]||{})[rname]||0;
+    coeffs['x_'+pr.name]=c;
+    if(c>0)hasCoeff=true;
+   });
+   if(hasCoeff){
+    cs2.push({name:rname,coeffs,sense:'<=',rhs:rdata.available});
+   }
+  }
+
+  if(cs2.length>0&&prodWithProfit.length>=1){
+   S.params={objective_type:objType,objective_coefficients:oc,constraints:cs2};
+   S.stage='confirm';
+   return fmtConfirmLP();
+  }
+ }
+
+ // ── Fallback: ask for missing data with helpful guidance ──
+ S.stage='lp_input';
+ let missing=[];
+ if(products.length===0) missing.push('**Productos**: ¿Qué producís? (ej: pan, medialunas, tortas)');
+ else if(prodWithProfit.length===0) missing.push('**Ganancias**: ¿Cuánto ganás con cada producto? (precio de venta - costo variable)');
+ if(resWithAvail.length===0) missing.push('**Recursos disponibles**: ¿Con cuánto contás? (ej: 100 kg de harina por día)');
+ if(prodsWithConsump.length===0&&products.length>0) missing.push('**Consumo por producto**: ¿Cuánto de cada recurso usa cada producto?');
+
+ if(missing.length>0){
+  return `Pude identificar ${products.length>0?products.map(p=>'"'+p.name+'"').join(', '):'los productos'} pero me falta:\n\n${missing.join('\n')}\n\nDescribí todo junto, por ejemplo:\n_"Tengo una panadería. Hago pan, medialunas y tortas. Tengo 100 kg de harina por día. Para un pan necesito 0.5 kg de harina. El pan se vende a $1.50 y cuesta $0.90 producirlo..."_`;
+ }
+
+ return '**Contame tu problema de Programación Lineal en tus palabras.**\n\nPor ejemplo:\n_"Tengo una panadería que hace pan, medialunas y tortas. Tengo 100 kg de harina, 30 kg de azúcar y 20 kg de manteca por día. Para un pan necesito 0.5 kg de harina, 0.02 kg de azúcar... El pan se vende a $1.50 y cuesta $0.90. Quiero maximizar la ganancia."_\n\nNo hace falta un formato especial — describilo como se lo contarías a alguien.';
+}
+
+function fmtConfirmLP(){
+ const p=session.params;
+ const vn=(v)=>{const n=v.replace('x_','');return n.charAt(0).toUpperCase()+n.slice(1);};
+ let s='**Voy a resolver este LP:**\n\n';
+ s+=`Objetivo: **${p.objective_type}** Z = ${Object.entries(p.objective_coefficients).map(([v,c])=>`${c}·${vn(v)}`).join(' + ')}\n\n`;
+ s+='Restricciones:\n';
+ p.constraints.forEach(c=>{
+  const cn=c.name.charAt(0).toUpperCase()+c.name.slice(1);
+  s+=`- ${cn}: ${Object.entries(c.coeffs).map(([v,co])=>`${co}·${vn(v)}`).join(' + ')} ≤ ${c.rhs}\n`;
+ });
+ s+='\n¿Es correcto? Puedo **resolver** o ajustar algo.';
+ return s;
+}
+
+function fmtConfirm(){
+ const S=session,p=S.params;let s=`**Voy a resolver un modelo de ${S.module==='STOCK'?'Inventarios':'Colas'} con estos datos:**\n\n`;
+ if(S.module==='STOCK'){
+  const lbl={demand_D:['Demanda anual (D)','un/año'],order_cost_k:['Costo pedido (k)','$/pedido'],holding_cost_c1:['Costo almac. (c₁)','$/un/año'],acquisition_cost_b:['Precio (b)','$/unidad'],lead_time_LT:['Tiempo entrega','años'],safety_stock_Sp:['Stock protección (Sp)','unidades'],shortage_cost_c2:['Costo faltante (c₂)','$/un/año']};
+  for(const[k,[l,u]]of Object.entries(lbl)){
+   if(p[k]!==undefined&&p[k]!==null){
+    let v=p[k];if(k==='lead_time_LT')s+=`- ${l}: ${r1(v*365)} días\n`;
+    else s+=`- ${l}: ${typeof v==='number'?v.toLocaleString('es-AR'):v} ${u}\n`;
+   }
+  }
+ }else if(S.module==='QUEUE'){
+  const lbl={arrival_rate_lambda:['Tasa llegada (λ)','cl/hora'],service_rate_mu:['Tasa servicio (μ)','cl/hora/serv'],num_servers_M:['Servidores (M)',''],system_capacity_N:['Capacidad (N)',''],cost_per_wait_ce:['Costo espera (ce)','$/cl/hora'],cost_per_server_cs:['Costo servidor (cs)','$/hora']};
+  for(const[k,[l,u]]of Object.entries(lbl)){if(p[k]!==undefined&&p[k]!==null)s+=`- ${l}: ${p[k]} ${u}\n`;}
+ }
+ if(S.assumptions.length){s+='\n**Supuestos:**\n';S.assumptions.forEach(a=>s+=`- ${a}\n`);}
+ s+='\n¿Es correcto? Puedo **resolver** o ajustar algo.';
+ return s;
+}
+
+function fmtConfirmQueueOptM(){
+ const S=session,p=S.params;
+ const Mmin=Math.ceil(p.arrival_rate_lambda/p.service_rate_mu);
+ let s=`**Voy a buscar el número óptimo de servidores (M) con estos datos:**\n\n`;
+ s+=`- Tasa llegada (λ): ${p.arrival_rate_lambda} pacientes/hora\n`;
+ s+=`- Tasa servicio (μ): ${p.service_rate_mu} pacientes/hora/servidor\n`;
+ s+=`- Costo espera (ce): $${p.cost_per_wait_ce}/paciente/hora\n`;
+ s+=`- Costo servidor (cs): $${p.cost_per_server_cs}/hora\n`;
+ s+=`- Mínimo servidores necesarios: ${Mmin} (para ρ < 1)\n`;
+ if(S.assumptions.length){s+='\n**Supuestos:**\n';S.assumptions.forEach(a=>s+=`- ${a}\n`);}
+ s+='\n¿Es correcto? Puedo **resolver** o ajustar algo.';
+ return s;
+}
+
+function doSolve(){
+ const S=session;let res;
+ const t0=performance.now();
+ updPipe(5);
+ try{
+  if(S.module==='LP'){res=LP.solve(S.params);}
+  else if(S.module==='STOCK'){res=STOCK.solve(S.params);}
+  else if(S.module==='QUEUE'){res=QUEUE.solve(S.params);}
+  else return '❌ Módulo no soportado.';
+ }catch(e){
+  logEntry({type:'solve',stageBefore:'confirm',solveStatus:'ERROR',solveTime:Math.round(performance.now()-t0),params:{...S.params}});
+  return `❌ Error al resolver: ${e.message}`;
+ }
+ const solveTime=Math.round(performance.now()-t0);
+ S.solution=res;
+ updPipe(6);
+ const isErr=res.status==='ERROR'||res.status==='INFACTIBLE'||res.status==='NO_ACOTADO'||res.status==='INESTABLE';
+ const objVal=res.objective_value!==undefined?res.objective_value:(res.economic_analysis&&res.economic_analysis.optimal_M?res.economic_analysis.optimal_M:'');
+ logEntry({type:'solve',stageBefore:'confirm',solveStatus:isErr?res.status:'OK',solveTime:solveTime,objectiveValue:objVal,params:{...S.params},response:(isErr?res.status:('Solución: '+S.module)).substring(0,200)});
+ if(isErr)
+  return `⚠️ **${res.status}**: ${res.message||'Error en resolución.'}`;
+ return fmtSolution(res);
+}
+
+function fmtSolution(res){
+ const S=session,mod=S.module;
+ // Check for multi-period custom format
+ if(S.params._meta&&S.params._meta.type==='multiperiod'){
+  const mp=fmtMultiPeriodSolution(res);
+  if(mp)return mp;
+ }
+ let s=`✅ **Solución encontrada** — ${res.model||res.subtype||mod}\n\n`;
+ const dec=res.decision||{};
+ if(dec.summary)s+=`**${dec.summary}**\n\n`;
+ if(dec.actions)(dec.actions||[]).forEach(a=>s+=`• ${a}\n`);
+ const r=res.results||{};
+ if(mod==='STOCK'){
+  s+='\n**Resultados clave:**\n';
+  if(r.qo!==undefined)s+=`• Lote óptimo (qo): **${r0(r.qo)} unidades**\n`;
+  if(r.to_days!==undefined)s+=`• Intervalo entre pedidos: **${r.to_days} días**\n`;
+  if(r.SR_reorder_point!==undefined)s+=`• Punto de reorden: **${r0(r.SR_reorder_point)} unidades**\n`;
+  if(r.CTE!==undefined)s+=`• Costo total anual: **$${r2(r.CTE).toLocaleString('es-AR')}**\n`;
+ }else if(mod==='QUEUE'){
+  const ec=res.economic_analysis;
+  // If finding optimal M, show recommendation first
+  if(S.params._find_optimal_M&&ec&&ec.optimal_M){
+   s=`✅ **Recomendación: ${ec.optimal_M} servidores** — ${res.model||'M/M/M'}\n\n`;
+  }
+  s+='\n**Métricas del sistema';
+  if(S.params._find_optimal_M&&ec&&ec.optimal_M)s+=` (con M=${ec.optimal_M})`;
+  s+=':**\n';
+  const rho=r.rho_per_server||r.rho||0;
+  s+=`• Utilización (ρ): **${r2(rho*100)}%**\n`;
+  if(r.Wc_minutes!==undefined)s+=`• Espera en cola: **${r.Wc_minutes} min**\n`;
+  if(r.Lc!==undefined)s+=`• Cola promedio: **${r.Lc}**\n`;
+  if(r.L!==undefined)s+=`• En sistema: **${r.L}**\n`;
+  if(r.prob_wait!==undefined)s+=`• P(esperar): **${r2(r.prob_wait*100)}%**\n`;
+  if(ec&&ec.comparisons){
+   s+='\n**Análisis económico (costo/hora):**\n';
+   s+='| M | Wc (min) | Costo espera | Costo serv. | **Total** |\n|---|----------|-------------|-------------|----------|\n';
+   ec.comparisons.forEach(c=>{
+    if(c.status==='ESTABLE'){
+     const opt=c.is_optimal?' ← **ÓPTIMO**':'';
+     s+=`| ${c.M} | ${c.Wc_minutes} | $${r0(c.cost_wait_per_hour)} | $${r0(c.cost_servers_per_hour)} | **$${r0(c.cost_total_per_hour)}**${opt} |\n`;
+    }else s+=`| ${c.M} | — | — | — | INESTABLE |\n`;
+   });
+  }
+ }else if(mod==='LP'){
+  s+='\n**Resultado:**\n';
+  if(res.objective_value!==undefined)s+=`• Z óptimo: **$${res.objective_value.toLocaleString('es-AR',{minimumFractionDigits:2})}**\n`;
+  const pvn=(v)=>{const n=v.replace('x_','');return n.charAt(0).toUpperCase()+n.slice(1);};
+  for(const[v,val]of Object.entries(res.variable_values||{}))s+=`• ${pvn(v)} = **${val}**\n`;
+  if(res.constraint_details){
+   s+='\n**Recursos:**\n';
+   s+='| Recurso | Usado | Disponible | Holgura | P. Sombra |\n|---------|-------|------------|---------|----------|\n';
+   res.constraint_details.forEach(cd=>{const cn=cd.name.charAt(0).toUpperCase()+cd.name.slice(1);s+=`| ${cn} | ${cd.lhs} | ${cd.rhs} | ${cd.slack} | $${cd.shadow_price} |\n`;});
+  }
+ }
+ s+='\n---\n_Preguntá sobre **sensibilidad**, pedí **explicar el modelo**, o iniciá un **nuevo problema**._';
+ return s;
+}
+
+function fmtSensitivity(){
+ const S=session,res=S.solution;if(!res)return 'No hay solución para analizar.';
+ const sens=res.sensitivity;if(!sens)return 'No hay análisis de sensibilidad disponible.';
+ let s='📊 **Análisis de Sensibilidad**\n\n';
+ if(S.module==='STOCK'){
+  const tbl=sens.sensitivity_table;
+  if(tbl){
+   s+='| α (q/qo) | q | λ | Error ε | CTE var. |\n|----------|---|---|---------|----------|\n';
+   tbl.forEach(r=>s+=`| ${r.alpha} | ${r.q} | ${r.lambda} | ${r.epsilon_pct}% | $${r.cte_variable.toLocaleString('es-AR')} |\n`);
+  }
+  if(sens.interpretation)s+=`\n${sens.interpretation}`;
+  if(sens.formula)s+=`\n\n_Fórmula: ${sens.formula}_`;
+ }else if(S.module==='QUEUE'){
+  const ls=sens.lambda_sensitivity;
+  if(ls){
+   s+='| Factor λ | λ | ρ | L | Wc (min) | Estado |\n|----------|---|---|---|----------|--------|\n';
+   ls.forEach(r=>{
+    if(r.status==='ESTABLE')s+=`| ${r.lambda_factor} | ${r.lambda} | ${r.rho} | ${r.L} | ${r.Wc_minutes} | ✅ |\n`;
+    else s+=`| ${r.lambda_factor} | ${r.lambda} | ${r.rho} | ∞ | ∞ | ❌ |\n`;
+   });
+  }
+  if(sens.interpretation)s+=`\n${sens.interpretation}`;
+ }else if(S.module==='LP'){
+  const si=sens.interpretation||[];
+  si.forEach(i=>s+=`• ${i}\n`);
+  for(const[n,info]of Object.entries(sens.rhs_ranges||{})){
+   if(info.binding)s+=`\n**${n}** (saturado): precio sombra = $${info.shadow_price}`;
+   else s+=`\n**${n}**: holgura = ${info.slack} unidades`;
+  }
+ }
+ return s;
+}
+
+function fmtFormulas(){
+ const res=session.solution;if(!res)return 'No hay modelo resuelto.';
+ const f=res.formulas||res.formulas_used;if(!f)return 'No hay fórmulas registradas.';
+ let s='📐 **Modelo y fórmulas utilizadas**\n\n';
+ s+=`**Fuente:** ${f.source||'Miranda, IO'}\n\n`;
+ for(const[k,v]of Object.entries(f)){if(k!=='source')s+=`• **${k}** = ${v}\n`;}
+ return s;
+}
+
+// ─── ACTIVITY LOG ────────────────────────────────────────────
+const activityLog=[];
+function logEntry(evt){
+ const S=session;
+ const entry={
+  id:activityLog.length+1,
+  timestamp:new Date().toISOString(),
+  event_type:evt.type||'interaction',
+  module:S.module||'',
+  stage_before:evt.stageBefore||'',
+  stage_after:S.stage||'',
+  user_input:evt.input||'',
+  detected_params:evt.params?JSON.stringify(evt.params):'',
+  response_summary:(evt.response||'').substring(0,200),
+  solve_status:evt.solveStatus||'',
+  objective_value:evt.objectiveValue||'',
+  solve_time_ms:evt.solveTime||'',
+  session_id:window._sessionId||''
+ };
+ activityLog.push(entry);
+ const el=document.getElementById('logCount');
+ if(el)el.textContent=activityLog.length+' entrada'+(activityLog.length!==1?'s':'');
+}
+// Generate unique session id
+window._sessionId='S'+Date.now().toString(36).toUpperCase();
+
+function exportLog(){
+ if(!activityLog.length){alert('No hay entradas para exportar.');return;}
+ // Build XLSX using SheetJS if available, otherwise CSV
+ if(typeof XLSX!=='undefined'){
+  const wb=XLSX.utils.book_new();
+  // Entries sheet
+  const headers=['ID','Timestamp','Evento','Módulo','Stage antes','Stage después','Input usuario','Parámetros detectados','Respuesta (resumen)','Status resolución','Valor objetivo (Z)','Tiempo resolución (ms)','Session ID'];
+  const rows=activityLog.map(e=>[e.id,e.timestamp,e.event_type,e.module,e.stage_before,e.stage_after,e.user_input,e.detected_params,e.response_summary,e.solve_status,e.objective_value,e.solve_time_ms,e.session_id]);
+  const wsData=[headers,...rows];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  // Column widths
+  ws['!cols']=[{wch:5},{wch:22},{wch:14},{wch:12},{wch:12},{wch:12},{wch:50},{wch:40},{wch:50},{wch:12},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Log');
+  // Summary sheet
+  const mods={LP:0,STOCK:0,QUEUE:0};
+  const solves=activityLog.filter(e=>e.event_type==='solve');
+  solves.forEach(e=>{if(mods[e.module]!==undefined)mods[e.module]++;});
+  const sumData=[
+   ['INVOP AI — Resumen de actividad'],
+   [],
+   ['Session ID',window._sessionId],
+   ['Fecha exportación',new Date().toLocaleString('es-AR')],
+   ['Total interacciones',activityLog.length],
+   ['Problemas resueltos',solves.length],
+   [],
+   ['Módulo','Resueltos'],
+   ['Programación Lineal',mods.LP],
+   ['Inventarios',mods.STOCK],
+   ['Teoría de Colas',mods.QUEUE],
+   [],
+   ['Resoluciones exitosas',solves.filter(e=>e.solve_status==='OK').length],
+   ['Errores',solves.filter(e=>e.solve_status!=='OK').length]
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(sumData);
+  ws2['!cols']=[{wch:25},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+  XLSX.writeFile(wb,'INVOP_AI_Log_'+new Date().toISOString().slice(0,10)+'.xlsx');
+ }else{
+  // Fallback: CSV
+  const sep=',';
+  const headers=['ID','Timestamp','Evento','Modulo','Stage_antes','Stage_despues','Input_usuario','Params','Respuesta','Status','Z','Tiempo_ms','Session'];
+  const esc=v=>{const s=String(v||'');return s.includes(sep)||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;};
+  let csv=headers.join(sep)+'\n';
+  activityLog.forEach(e=>{csv+=[e.id,e.timestamp,e.event_type,e.module,e.stage_before,e.stage_after,e.user_input,e.detected_params,e.response_summary,e.solve_status,e.objective_value,e.solve_time_ms,e.session_id].map(esc).join(sep)+'\n';});
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='INVOP_AI_Log_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+ }
+}
+
+// ─── UI ─────────────────────────────────────────────────────
+// ─── AVATAR STATE MACHINE ────────────────────────────────────
+const avatarMoods={
+ idle:{mouth:'M22 37 Q30 44 38 37',eyes:'open',ring:'',status:'',mood:'Listo para resolver',blush:.2},
+ listening:{mouth:'M22 37 Q30 42 38 37',eyes:'open',ring:'',status:'',mood:'Escuchando...',blush:.2},
+ thinking:{mouth:'M22 36 Q30 34 38 36',eyes:'squint',ring:'thinking',status:'thinking',mood:'Analizando datos...',blush:.1},
+ confirm:{mouth:'M22 37 Q30 41 38 37',eyes:'open',ring:'',status:'',mood:'Revisemos juntos',blush:.25},
+ solved:{mouth:'M20 36 Q30 46 40 36',eyes:'happy',ring:'solved',status:'',mood:'Resuelto!',blush:.35},
+ error:{mouth:'M22 40 Q30 36 38 40',eyes:'open',ring:'',status:'error',mood:'Algo falló...',blush:.1},
+ collecting:{mouth:'M22 37 Q30 42 38 37',eyes:'open',ring:'',status:'thinking',mood:'Necesito más datos',blush:.2}
+};
+let currentMood='idle';
+function setAvatar(mood){
+ currentMood=mood;
+ const m=avatarMoods[mood]||avatarMoods.idle;
+ const ring=document.getElementById('avatarRing');
+ const status=document.getElementById('avatarStatus');
+ const moodTxt=document.getElementById('avatarMood');
+ const mouth=document.querySelector('.av-mouth');
+ const blushL=document.querySelector('.av-blush-l');
+ const blushR=document.querySelector('.av-blush-r');
+ if(ring){ring.className='avatar-ring'+(m.ring?' '+m.ring:'');}
+ if(status){status.className='avatar-status'+(m.status?' '+m.status:'');}
+ if(moodTxt)moodTxt.textContent=m.mood;
+ if(mouth)mouth.setAttribute('d',m.mouth);
+ if(blushL)blushL.setAttribute('opacity',m.blush);
+ if(blushR)blushR.setAttribute('opacity',m.blush);
+ // Eye animations
+ const eyeL=document.querySelector('.av-eye-l');
+ const eyeR=document.querySelector('.av-eye-r');
+ const pupilL=document.querySelector('.av-pupil-l');
+ const pupilR=document.querySelector('.av-pupil-r');
+ if(m.eyes==='squint'){
+  if(eyeL){eyeL.setAttribute('ry','1.5');eyeL.setAttribute('rx','3');}
+  if(eyeR){eyeR.setAttribute('ry','1.5');eyeR.setAttribute('rx','3');}
+ }else if(m.eyes==='happy'){
+  if(eyeL){eyeL.setAttribute('ry','1');eyeL.setAttribute('rx','3');}
+  if(eyeR){eyeR.setAttribute('ry','1');eyeR.setAttribute('rx','3');}
+  if(pupilL)pupilL.setAttribute('opacity','0');
+  if(pupilR)pupilR.setAttribute('opacity','0');
+ }else{
+  if(eyeL){eyeL.setAttribute('ry','3');eyeL.setAttribute('rx','3');}
+  if(eyeR){eyeR.setAttribute('ry','3');eyeR.setAttribute('rx','3');}
+  if(pupilL)pupilL.setAttribute('opacity','1');
+  if(pupilR)pupilR.setAttribute('opacity','1');
+ }
+}
+function avatarClick(){
+ const jokes=['Optimizando tu día...','ρ < 1, todo bajo control','Z* = felicidad máxima','EOQ: Eat Optimal Quantities','Lambda? Yo solo quiero ayudar'];
+ const el=document.getElementById('avatarMood');
+ if(el){el.textContent=jokes[Math.floor(Math.random()*jokes.length)];setTimeout(()=>{if(el)el.textContent=avatarMoods[currentMood].mood;},2500);}
+}
+// Blink animation
+setInterval(()=>{
+ const eyeL=document.querySelector('.av-eye-l'),eyeR=document.querySelector('.av-eye-r');
+ if(!eyeL||!eyeR||currentMood==='thinking')return;
+ const m=avatarMoods[currentMood];if(m.eyes==='happy')return;
+ eyeL.setAttribute('ry','0.5');eyeR.setAttribute('ry','0.5');
+ setTimeout(()=>{eyeL.setAttribute('ry','3');eyeR.setAttribute('ry','3');},150);
+},4000+Math.random()*2000);
+
+// ─── TYPING INDICATOR ───
+function showTyping(){
+ const c=document.getElementById('msgs');
+ const d=document.createElement('div');d.className='msg a';d.id='typing-indicator';
+ const lb=document.createElement('div');lb.className='mlbl';lb.innerHTML='<span></span>INVOP AI';
+ const bb=document.createElement('div');bb.className='typing';
+ bb.innerHTML='<span></span><span></span><span></span>';
+ d.appendChild(lb);d.appendChild(bb);c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function hideTyping(){const el=document.getElementById('typing-indicator');if(el)el.remove();}
+
+function addMsg(role,txt){
+ const w=document.getElementById('wel');if(w)w.style.display='none';
+ const c=document.getElementById('msgs'),d=document.createElement('div');
+ d.className=`msg ${role==='user'?'u':'a'}`;
+ const lb=document.createElement('div');lb.className='mlbl';lb.textContent=role==='user'?'Tú':'INVOP AI';
+ const bb=document.createElement('div');bb.className='bubble';bb.innerHTML=renderMd(txt);
+ d.appendChild(lb);d.appendChild(bb);c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function renderMd(t){
+ return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_\((.+?)\)_/g,'<em>($1)</em>')
+  .replace(/^• (.+)$/gm,'<li>$1</li>').replace(/^- (.+)$/gm,'<li>$1</li>')
+  .replace(/(<li>.*<\/li>(\n)?)+/g,m=>'<ul>'+m+'</ul>')
+  .replace(/^---$/gm,'<hr>').replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')
+  .replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/g,(m,hdr,body)=>{
+   const ths=hdr.split('|').filter(x=>x.trim()).map(h=>`<th>${h.trim()}</th>`).join('');
+   const rows=body.trim().split('\n').map(row=>{const tds=row.split('|').filter(x=>x.trim()).map(d=>`<td>${d.trim()}</td>`).join('');return `<tr>${tds}</tr>`;}).join('');
+   return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+}
+function send(){
+ const inp=document.getElementById('inp'),txt=inp.value.trim();if(!txt)return;
+ inp.value='';aRsz(inp);addMsg('user',txt);
+ const btn=document.getElementById('sbt');btn.disabled=true;btn.classList.add('ld');btn.querySelector('span').textContent='...';
+ setAvatar('thinking');showTyping();
+ setTimeout(()=>{
+  hideTyping();
+  const stageBefore=session.stage;
+  const resp=processMsg(txt);addMsg('assistant',resp);updUI();
+  // Log the interaction
+  logEntry({type:'interaction',input:txt,stageBefore:stageBefore,response:resp,params:Object.keys(session.params).length?{...session.params}:null});
+  btn.disabled=false;btn.classList.remove('ld');btn.querySelector('span').textContent='Enviar';
+  // Update avatar based on stage
+  const S=session;
+  if(S.stage==='solved')setAvatar('solved');
+  else if(S.stage==='confirm')setAvatar('confirm');
+  else if(S.stage==='collect'||S.stage==='lp_input')setAvatar('collecting');
+  else setAvatar('idle');
+ },400+Math.random()*300);
+}
+function updUI(){
+ const S=session,mb=document.getElementById('bmod'),sb=document.getElementById('bstg');
+ if(S.module){const nm={LP:'Prog. Lineal',STOCK:'Inventarios',QUEUE:'T. Colas'};mb.textContent=nm[S.module]||S.module;mb.classList.add('on');
+  document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('sel'));
+  const card=document.querySelector(`.mcard[data-m="${S.module}"]`);if(card)card.classList.add('sel');
+ }else{mb.textContent='Sin módulo';mb.classList.remove('on');}
+ const sn={detect:'Esperando',collect:'Recolectando',lp_input:'Datos LP',confirm:'Confirmación',solved:'Resuelto'};
+ sb.textContent=sn[S.stage]||S.stage;if(S.stage==='solved')sb.classList.add('on');else sb.classList.remove('on');
+ document.getElementById('pipeP').style.display=S.module?'block':'none';
+ if(Object.keys(S.params).length&&S.params._raw===undefined){
+  document.getElementById('parP').style.display='block';
+  const lbl={demand_D:'D (Demanda)',order_cost_k:'k (Pedido)',holding_cost_c1:'c₁ (Almac.)',acquisition_cost_b:'b (Precio)',arrival_rate_lambda:'λ (Llegada)',service_rate_mu:'μ (Servicio)',num_servers_M:'M (Servidores)',cost_per_wait_ce:'ce (Espera)',cost_per_server_cs:'cs (Servidor)'};
+  document.getElementById('pp').innerHTML=Object.entries(S.params).filter(([k,v])=>v!==null&&v!==undefined&&k[0]!=='_').map(([k,v])=>`<div><strong>${lbl[k]||k}:</strong> ${typeof v==='number'?v.toLocaleString('es-AR'):JSON.stringify(v).substring(0,60)}</div>`).join('');
+ }
+}
+function updPipe(n){const ids=['s1','s2','s3','s4','s5','s6'];ids.forEach((id,i)=>{const d=document.getElementById(id);if(d)d.className=i<n?'sd on':i===n?'sd pn':'sd';});}
+function selMod(m){const nm={LP:'programación lineal',STOCK:'inventarios',QUEUE:'teoría de colas'};document.getElementById('inp').value=`Quiero resolver un problema de ${nm[m]}`;send();}
+function exSend(t){
+ const ex={
+  lp:'Tengo una fábrica que hace dos piezas, la A y la B. La pieza A me deja $400 de ganancia y la B me deja $300. Tengo tres etapas: tratamiento térmico (720 horas disponibles), maquinado (640 horas) y mano de obra (480 horas). La pieza A necesita 3h de térmico, 4h de maquinado y 2h de mano de obra. La pieza B necesita 4h de térmico, 2h de maquinado y 4h de mano de obra. ¿Cuánto fabricar?',
+  stock:'Soy distribuidor de caños de PVC. Vendo unas 15000 unidades por año. Cada vez que hago un pedido al proveedor gasto como $200 entre flete y papeleo. Almacenar cada caño me cuesta más o menos $3 por año. El caño me sale $45. El proveedor tarda 10 días en entregarme. ¿Cuántos debería pedir cada vez y cada cuánto?',
+  queue:'Tengo una sucursal bancaria con 3 cajeros. Llegan en promedio 20 clientes por hora. Cada cajero atiende en promedio 8 clientes por hora. Cada minuto que un cliente espera me cuesta $2 en satisfacción. Cada cajero me cuesta $30 por hora. ¿Necesito más cajeros?'
+ };
+ document.getElementById('inp').value=ex[t];send();
+}
+function qSend(t){document.getElementById('inp').value=t;send();}
+function hKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+function aRsz(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,150)+'px';}
+// ─── LANDING PAGE ─────────────────────────────────────────────
+function enterApp(){
+ document.body.classList.remove('landing-mode');
+ document.body.classList.add('app-mode');
+ setTimeout(()=>{document.getElementById('inp').focus();},600);
+}
+// Scroll-triggered fade-in for landing sections
+document.addEventListener('DOMContentLoaded',()=>{
+ const obs=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
+ },{threshold:.15});
+ document.querySelectorAll('.fade-up').forEach(el=>obs.observe(el));
+});
+</script>
+</body>
+</html>

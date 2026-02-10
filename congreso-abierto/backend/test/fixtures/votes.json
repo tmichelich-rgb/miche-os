@@ -1,0 +1,48 @@
+[
+  {
+    "external_id": "VOT-2024-001",
+    "title": "Ley de Bases y Puntos de Partida - Votación en general",
+    "description": "Votación en general del proyecto de Ley de Bases",
+    "date": "2024-06-28",
+    "result": "APPROVED",
+    "affirmative": 142,
+    "negative": 106,
+    "abstention": 5,
+    "absent": 4,
+    "session_external_id": "SES-2024-012",
+    "session_date": "2024-06-28",
+    "session_title": "Sesión Ordinaria N° 12",
+    "period": "2024",
+    "results": [
+      { "legislator_external_id": "DIP-001", "vote": "NEGATIVE" },
+      { "legislator_external_id": "DIP-002", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-003", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-004", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-005", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-006", "vote": "AFFIRMATIVE" }
+    ]
+  },
+  {
+    "external_id": "VOT-2024-002",
+    "title": "Declaración de emergencia educativa",
+    "description": "Votación sobre declaración de emergencia en el sistema educativo nacional",
+    "date": "2024-07-15",
+    "result": "REJECTED",
+    "affirmative": 110,
+    "negative": 130,
+    "abstention": 10,
+    "absent": 7,
+    "session_external_id": "SES-2024-015",
+    "session_date": "2024-07-15",
+    "session_title": "Sesión Ordinaria N° 15",
+    "period": "2024",
+    "results": [
+      { "legislator_external_id": "DIP-001", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-002", "vote": "NEGATIVE" },
+      { "legislator_external_id": "DIP-003", "vote": "AFFIRMATIVE" },
+      { "legislator_external_id": "DIP-004", "vote": "NEGATIVE" },
+      { "legislator_external_id": "DIP-005", "vote": "ABSTENTION" },
+      { "legislator_external_id": "DIP-006", "vote": "ABSENT" }
+    ]
+  }
+]

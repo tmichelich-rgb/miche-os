@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiSolve — Investigación Operativa Inteligente</title>
+    <style>
+        :root {
+            --primary: #1F4E79;
+            --primary-light: #2E75B6;
+            --accent: #00B4D8;
+            --bg: #F8FAFC;
+            --card: #FFFFFF;
+            --text: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ─── HEADER ─────────────────────────── */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 10;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: var(--accent); }
+        .subtitle {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-left: auto;
+        }
+        .header-badges {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+        .badge {
+            padding: 0.25rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .badge.active { background: var(--accent); border-color: var(--accent); }
+
+        /* ─── MAIN LAYOUT ────────────────────── */
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ─── SIDEBAR ────────────────────────── */
+        .sidebar {
+            width: 280px;
+            background: var(--card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-section {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-section h3 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .module-card {
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+        }
+        .module-card:hover { border-color: var(--primary-light); background: #F0F7FF; }
+        .module-card.selected { border-color: var(--primary); background: #E8F0FE; }
+        .module-card h4 { font-size: 0.85rem; color: var(--primary); }
+        .module-card p { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+        .module-icon { font-size: 1.2rem; margin-right: 0.5rem; }
+
+        .status-panel {
+            padding: 1rem;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+        .status-dot.active { background: var(--success); }
+        .status-dot.pending { background: var(--warning); }
+
+        /* ─── CHAT AREA ──────────────────────── */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user {
+            align-self: flex-end;
+        }
+        .message.assistant {
+            align-self: flex-start;
+        }
+        .message-bubble {
+            padding: 0.875rem 1.125rem;
+            border-radius: 16px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow);
+        }
+        .message.user .message-bubble {
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .message.assistant .message-bubble {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+        .message-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            padding: 0 0.5rem;
+        }
+
+        /* Markdown in messages */
+        .message-bubble strong, .message-bubble b { font-weight: 700; }
+        .message-bubble em, .message-bubble i { font-style: italic; color: var(--text-secondary); }
+        .message-bubble ul, .message-bubble ol { margin: 0.5rem 0; padding-left: 1.25rem; }
+        .message-bubble li { margin: 0.25rem 0; }
+        .message-bubble table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.8rem; width: 100%; }
+        .message-bubble th, .message-bubble td { border: 1px solid var(--border); padding: 0.375rem 0.5rem; text-align: left; }
+        .message-bubble th { background: #F1F5F9; font-weight: 600; }
+        .message-bubble hr { border: none; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+        .message-bubble code { background: #F1F5F9; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.85em; }
+
+        /* Welcome */
+        .welcome {
+            text-align: center;
+            padding: 3rem;
+            max-width: 600px;
+            margin: auto;
+        }
+        .welcome h2 { font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem; }
+        .welcome p { color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.5rem; }
+        .example-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .example-card {
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            background: var(--card);
+        }
+        .example-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow); }
+        .example-card h4 { font-size: 0.8rem; color: var(--primary); margin-bottom: 0.375rem; }
+        .example-card p { font-size: 0.75rem; color: var(--text-secondary); }
+
+        /* ─── INPUT AREA ─────────────────────── */
+        .input-area {
+            padding: 1rem 1.5rem;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+        }
+        .input-container {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            max-width: 100%;
+        }
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+            min-height: 48px;
+            max-height: 150px;
+        }
+        textarea:focus { border-color: var(--primary-light); }
+        .send-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .send-btn:hover { background: var(--primary-light); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .send-btn.loading { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        /* ─── QUICK ACTIONS ──────────────────── */
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .quick-btn {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 2rem;
+            background: var(--card);
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .quick-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+
+        /* ─── RESPONSIVE ─────────────────────── */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .example-cards { grid-template-columns: 1fr; }
+            .chat-messages { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Opti<span>Solve</span></div>
+        <div class="header-badges">
+            <span class="badge" id="badge-module">Sin módulo</span>
+            <span class="badge" id="badge-stage">Esperando</span>
+            <span class="badge" id="badge-rag">RAG: Cargando...</span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Módulos</h3>
+                <div class="module-card" data-module="LP" onclick="selectModule('LP')">
+                    <h4><span class="module-icon">📐</span> Programación Lineal</h4>
+                    <p>Maximizar/minimizar con restricciones. Simplex, sensibilidad, dual.</p>
+                </div>
+                <div class="module-card" data-module="STOCK" onclick="selectModule('STOCK')">
+                    <h4><span class="module-icon">📦</span> Inventarios</h4>
+                    <p>EOQ, punto de reorden, stock de protección, descuentos.</p>
+                </div>
+                <div class="module-card" data-module="QUEUE" onclick="selectModule('QUEUE')">
+                    <h4><span class="module-icon">🔄</span> Teoría de Colas</h4>
+                    <p>M/M/1, M/M/M, tiempos de espera, optimización de servidores.</p>
+                </div>
+            </div>
+
+            <div class="sidebar-section" id="pipeline-status" style="display:none;">
+                <h3>Pipeline</h3>
+                <div class="status-item"><div class="status-dot" id="s1"></div> Interpretación</div>
+                <div class="status-item"><div class="status-dot" id="s2"></div> Clasificación</div>
+                <div class="status-item"><div class="status-dot" id="s3"></div> Consulta RAG</div>
+                <div class="status-item"><div class="status-dot" id="s4"></div> Problem Spec</div>
+                <div class="status-item"><div class="status-dot" id="s5"></div> Validación</div>
+                <div class="status-item"><div class="status-dot" id="s6"></div> Resolución</div>
+                <div class="status-item"><div class="status-dot" id="s7"></div> Sensibilidad</div>
+            </div>
+
+            <div class="sidebar-section" id="params-panel" style="display:none;">
+                <h3>Parámetros detectados</h3>
+                <div id="params-list" style="font-size: 0.8rem;"></div>
+            </div>
+        </aside>
+
+        <!-- Chat -->
+        <main class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="welcome" id="welcome">
+                    <h2>Bienvenido a OptiSolve</h2>
+                    <p>Describí tu problema operativo en lenguaje natural y te ayudo a resolverlo con el modelo matemático correcto.</p>
+                    <div class="example-cards">
+                        <div class="example-card" onclick="sendExample('lp')">
+                            <h4>📐 Producción</h4>
+                            <p>Tengo una fábrica que hace dos piezas. ¿Cuánto de cada una fabricar para maximizar ganancia?</p>
+                        </div>
+                        <div class="example-card" onclick="sendExample('stock')">
+                            <h4>📦 Inventario</h4>
+                            <p>Vendo 15,000 unidades/año. ¿Cuánto pedir cada vez y cada cuánto?</p>
+                        </div>
+                        <div class="example-card" onclick="sendExample('queue')">
+                            <h4>🔄 Atención</h4>
+                            <p>Tengo 3 cajeros y llegan 20 clientes/hora. ¿Necesito más cajeros?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <textarea id="user-input" rows="1"
+                            placeholder="Describí tu problema operativo..."
+                            onkeydown="handleKey(event)"
+                            oninput="autoResize(this)"></textarea>
+                    </div>
+                    <button class="send-btn" id="send-btn" onclick="sendMessage()">Enviar</button>
+                </div>
+                <div class="quick-actions" id="quick-actions">
+                    <button class="quick-btn" onclick="sendQuick('¿Qué pasa si cambia la demanda?')">Sensibilidad</button>
+                    <button class="quick-btn" onclick="sendQuick('Nuevo problema')">Nuevo problema</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API = window.location.origin + '/api';
+        let sessionId = null;
+        let currentModule = null;
+
+        // ─── CHECK HEALTH ───────────────────────
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${API}/health`);
+                const data = await res.json();
+                const badge = document.getElementById('badge-rag');
+                if (data.rag_indexed) {
+                    badge.textContent = `RAG: ${data.rag_chunks} chunks`;
+                    badge.classList.add('active');
+                } else {
+                    badge.textContent = 'RAG: No indexado';
+                }
+            } catch (e) {
+                document.getElementById('badge-rag').textContent = 'RAG: Error';
+            }
+        }
+        checkHealth();
+
+        // ─── SIMPLE MARKDOWN RENDERER ───────────
+        function renderMd(text) {
+            return text
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/_\((.+?)\)_/g, '<em>($1)</em>')
+                .replace(/^• (.+)$/gm, '<li>$1</li>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+                .replace(/^---$/gm, '<hr>')
+                .replace(/\n{2,}/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                // Tables
+                .replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (m, header, body) => {
+                    const ths = header.split('|').filter(x=>x.trim()).map(h => `<th>${h.trim()}</th>`).join('');
+                    const rows = body.trim().split('\n').map(row => {
+                        const tds = row.split('|').filter(x=>x.trim()).map(d => `<td>${d.trim()}</td>`).join('');
+                        return `<tr>${tds}</tr>`;
+                    }).join('');
+                    return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+                });
+        }
+
+        // ─── ADD MESSAGE ────────────────────────
+        function addMessage(role, text) {
+            const welcome = document.getElementById('welcome');
+            if (welcome) welcome.style.display = 'none';
+
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = role === 'user' ? 'Tú' : 'OptiSolve';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.innerHTML = renderMd(text);
+
+            div.appendChild(label);
+            div.appendChild(bubble);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ─── SEND MESSAGE ──────────────────────
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            autoResize(input);
+            addMessage('user', text);
+
+            const btn = document.getElementById('send-btn');
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.textContent = 'Procesando...';
+
+            try {
+                const res = await fetch(`${API}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        session_id: sessionId,
+                    })
+                });
+                const data = await res.json();
+
+                sessionId = data.session_id;
+                addMessage('assistant', data.response);
+                updateUI(data);
+
+            } catch (e) {
+                addMessage('assistant', `⚠️ Error de conexión: ${e.message}. ¿Está corriendo el servidor?`);
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = 'Enviar';
+        }
+
+        // ─── UPDATE UI STATE ────────────────────
+        function updateUI(data) {
+            // Module badge
+            const moduleBadge = document.getElementById('badge-module');
+            if (data.module) {
+                const names = { LP: 'Prog. Lineal', STOCK: 'Inventarios', QUEUE: 'T. Colas' };
+                moduleBadge.textContent = names[data.module] || data.module;
+                moduleBadge.classList.add('active');
+                currentModule = data.module;
+
+                // Highlight sidebar card
+                document.querySelectorAll('.module-card').forEach(c => c.classList.remove('selected'));
+                const card = document.querySelector(`.module-card[data-module="${data.module}"]`);
+                if (card) card.classList.add('selected');
+            }
+
+            // Stage badge
+            const stageBadge = document.getElementById('badge-stage');
+            const stageNames = {
+                detect_module: 'Detectando',
+                collect_params: 'Recolectando datos',
+                confirm: 'Confirmación',
+                solving: 'Resolviendo...',
+                solved: '✅ Resuelto',
+            };
+            stageBadge.textContent = stageNames[data.stage] || data.stage;
+            if (data.stage === 'solved') stageBadge.classList.add('active');
+
+            // Pipeline status
+            const pipeline = document.getElementById('pipeline-status');
+            if (data.module) {
+                pipeline.style.display = 'block';
+                const stages = ['s1','s2','s3','s4','s5','s6','s7'];
+                const stageMap = {
+                    detect_module: 0,
+                    collect_params: 1,
+                    confirm: 3,
+                    solving: 5,
+                    solved: 7,
+                };
+                const current = stageMap[data.stage] || 0;
+                stages.forEach((s, i) => {
+                    const dot = document.getElementById(s);
+                    if (i < current) dot.className = 'status-dot active';
+                    else if (i === current) dot.className = 'status-dot pending';
+                    else dot.className = 'status-dot';
+                });
+            }
+
+            // Params panel
+            if (data.data && data.data.params) {
+                const panel = document.getElementById('params-panel');
+                panel.style.display = 'block';
+                const list = document.getElementById('params-list');
+                list.innerHTML = Object.entries(data.data.params)
+                    .filter(([k, v]) => v !== null && v !== undefined)
+                    .map(([k, v]) => `<div style="margin-bottom:4px;"><strong>${k}:</strong> ${
+                        typeof v === 'number' ? v.toLocaleString('es-AR') : v
+                    }</div>`)
+                    .join('');
+            }
+        }
+
+        // ─── EXAMPLES ──────────────────────────
+        const EXAMPLES = {
+            lp: `Tengo una fábrica que hace dos piezas, la A y la B. La pieza A me deja $400 de ganancia y la B me deja $300. Tengo tres etapas: tratamiento térmico (720 horas disponibles), maquinado (640 horas) y mano de obra manual (480 horas). La pieza A necesita 3h de térmico, 4h de maquinado y 2h de manual. La pieza B necesita 4h de térmico, 2h de maquinado y 4h de manual. ¿Cuánto de cada una debería fabricar?`,
+            stock: `Soy distribuidor de caños de PVC. Vendo unas 15,000 unidades por año. Cada vez que hago un pedido al proveedor gasto como $200 entre flete y papeleo. Almacenar cada caño me cuesta más o menos $3 por año. El caño me sale $45. El proveedor tarda 10 días en entregarme. ¿Cuántos debería pedir cada vez y cada cuánto?`,
+            queue: `Tengo una sucursal bancaria con 3 cajeros. Llegan en promedio 20 clientes por hora. Cada cajero atiende en promedio 8 clientes por hora. Cada minuto que un cliente espera me cuesta $2. Cada cajero me cuesta $30/hora. ¿Necesito más cajeros?`,
+        };
+
+        function sendExample(type) {
+            document.getElementById('user-input').value = EXAMPLES[type];
+            sendMessage();
+        }
+
+        function sendQuick(text) {
+            document.getElementById('user-input').value = text;
+            sendMessage();
+        }
+
+        function selectModule(module) {
+            const names = { LP: 'programación lineal', STOCK: 'inventarios', QUEUE: 'teoría de colas' };
+            document.getElementById('user-input').value = `Quiero resolver un problema de ${names[module]}`;
+            sendMessage();
+        }
+
+        // ─── UTILS ─────────────────────────────
+        function handleKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+{
+  "name": "congreso-abierto-backend",
+  "version": "0.1.0",
+  "description": "Congreso Abierto - Backend API & Workers",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "db:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma",
+    "db:migrate:prod": "prisma migrate deploy --schema=src/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=src/prisma/schema.prisma",
+    "db:push": "prisma db push --schema=src/prisma/schema.prisma",
+    "db:seed": "ts-node src/prisma/seed.ts",
+    "db:studio": "prisma studio --schema=src/prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=src/prisma/schema.prisma --force",
+    "workers:dev": "ts-node src/workers/index.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "@nestjs/core": "^10.3.0",
+    "@nestjs/platform-fastify": "^10.3.0",
+    "@nestjs/swagger": "^7.2.0",
+    "@nestjs/bullmq": "^10.0.0",
+    "@nestjs/schedule": "^4.0.0",
+    "@nestjs/throttler": "^5.1.0",
+    "@prisma/client": "^5.8.0",
+    "bullmq": "^5.1.0",
+    "meilisearch": "^0.37.0",
+    "ioredis": "^5.3.0",
+    "class-validator": "^0.14.0",
+    "class-transformer": "^0.5.1",
+    "csv-parse": "^5.5.0",
+    "cheerio": "^1.0.0-rc.12",
+    "node-cron": "^3.0.3",
+    "pino": "^8.17.0",
+    "nestjs-pino": "^3.5.0",
+    "pino-pretty": "^10.3.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "crypto-js": "^4.2.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.0",
+    "@nestjs/testing": "^10.3.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.10.0",
+    "@types/crypto-js": "^4.2.0",
+    "@types/uuid": "^9.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0",
+    "prisma": "^5.8.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "prettier": "^3.1.0",
+    "supertest": "^6.3.0",
+    "@types/supertest": "^6.0.0"
+  },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma",
+    "seed": "ts-node src/prisma/seed.ts"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": ".",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": ["src/**/*.(t|j)s", "!src/**/*.module.ts", "!src/main.ts"],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  }
+}

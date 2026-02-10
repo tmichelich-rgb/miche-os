@@ -1,0 +1,41 @@
+[
+  {
+    "session_external_id": "SES-2024-012",
+    "session_date": "2024-06-28",
+    "session_title": "Sesión Ordinaria N° 12",
+    "records": [
+      { "legislator_external_id": "DIP-001", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-002", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-003", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-004", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-005", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-006", "status": "PRESENT" }
+    ]
+  },
+  {
+    "session_external_id": "SES-2024-015",
+    "session_date": "2024-07-15",
+    "session_title": "Sesión Ordinaria N° 15",
+    "records": [
+      { "legislator_external_id": "DIP-001", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-002", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-003", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-004", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-005", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-006", "status": "ABSENT" }
+    ]
+  },
+  {
+    "session_external_id": "SES-2024-018",
+    "session_date": "2024-08-20",
+    "session_title": "Sesión Ordinaria N° 18",
+    "records": [
+      { "legislator_external_id": "DIP-001", "status": "ABSENT" },
+      { "legislator_external_id": "DIP-002", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-003", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-004", "status": "ABSENT" },
+      { "legislator_external_id": "DIP-005", "status": "PRESENT" },
+      { "legislator_external_id": "DIP-006", "status": "PRESENT" }
+    ]
+  }
+]

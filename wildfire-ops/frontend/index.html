@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Ops Allocation Engine | Chubut Region</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 380px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #1a1a2e;
+        }
+
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid #2a2a4e;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .logo span {
+            font-size: 12px;
+            color: #888;
+            margin-left: 8px;
+        }
+
+        .header-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Left Panel - Controls */
+        .left-panel {
+            background: #12121a;
+            padding: 16px;
+            overflow-y: auto;
+            border-right: 1px solid #2a2a4e;
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #2a2a4e;
+        }
+
+        /* Scenario Controls */
+        .scenario-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .scenario-card:hover {
+            border-color: #4a4a7e;
+            background: #1e1e36;
+        }
+
+        .scenario-card.active {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .scenario-card h4 {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .scenario-card p {
+            font-size: 11px;
+            color: #888;
+        }
+
+        /* Sliders */
+        .slider-group {
+            margin-bottom: 16px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .slider-value {
+            color: #f59e0b;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #2a2a4e;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #f59e0b;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Checkboxes */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+            accent-color: #f59e0b;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-secondary {
+            background: #2a2a4e;
+            color: #e0e0e0;
+            margin-top: 8px;
+        }
+
+        /* Map Container */
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Map Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(18, 18, 26, 0.95);
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 2px;
+        }
+
+        /* Right Panel - Results */
+        .right-panel {
+            background: #12121a;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #2a2a4e;
+        }
+
+        .results-header {
+            padding: 16px;
+            border-bottom: 1px solid #2a2a4e;
+        }
+
+        .results-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .results-header .timestamp {
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #2a2a4e;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .tab.active {
+            border-bottom-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Assignment Cards */
+        .assignment-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .assignment-priority {
+            width: 24px;
+            height: 24px;
+            background: #f59e0b;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .assignment-route {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .assignment-arrow {
+            color: #666;
+        }
+
+        .assignment-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            color: #e0e0e0;
+        }
+
+        .assignment-explanation {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #2a2a4e;
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+        }
+
+        /* Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .metric-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #f59e0b;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Constraints */
+        .constraint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #1a1a2e;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .constraint-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .constraint-status.binding {
+            background: #ef4444;
+        }
+
+        .constraint-status.ok {
+            background: #4ade80;
+        }
+
+        .constraint-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .constraint-slack {
+            margin-left: auto;
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* Comparison */
+        .comparison-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .comparison-delta {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .comparison-delta.positive {
+            color: #4ade80;
+        }
+
+        .comparison-delta.negative {
+            color: #ef4444;
+        }
+
+        .change-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            padding: 6px 0;
+            border-bottom: 1px solid #2a2a4e;
+        }
+
+        .change-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .change-badge.reassigned {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        /* Resource icons */
+        .resource-icon {
+            font-size: 16px;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #2a2a4e;
+            border-top-color: #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* API Key Input */
+        .api-key-section {
+            margin-top: 12px;
+        }
+
+        .api-key-input {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px solid #2a2a4e;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .api-key-input:focus {
+            outline: none;
+            border-color: #f59e0b;
+        }
+
+        .api-key-help {
+            font-size: 10px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .api-key-help a {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🔥</span>
+                <h1>WILDFIRE OPS ALLOCATION ENGINE</h1>
+                <span>Chubut / Los Alerces</span>
+            </div>
+            <div class="header-status">
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span id="data-source">Sample Data</span>
+                </div>
+                <div class="status-badge">
+                    <span id="fire-count">0</span> Active Fires
+                </div>
+            </div>
+        </header>
+
+        <!-- Left Panel - Controls -->
+        <aside class="left-panel">
+            <div class="panel-section">
+                <div class="section-header">Scenarios</div>
+
+                <div class="scenario-card active" data-scenario="baseline">
+                    <h4>📊 Baseline</h4>
+                    <p>Current conditions, no modifications</p>
+                </div>
+
+                <div class="scenario-card" data-scenario="wind">
+                    <h4>💨 Wind Shift</h4>
+                    <p>Strong westerly wind (configurable)</p>
+                </div>
+
+                <div class="scenario-card" data-scenario="grounded">
+                    <h4>✈️ Aircraft Grounded</h4>
+                    <p>AC001 unavailable (maintenance)</p>
+                </div>
+
+                <div class="scenario-card" data-scenario="custom">
+                    <h4>⚙️ Custom</h4>
+                    <p>Configure parameters below</p>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-header">Wind Conditions</div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Wind Speed</span>
+                        <span class="slider-value" id="wind-speed-value">0 km/h</span>
+                    </div>
+                    <input type="range" id="wind-speed" min="0" max="80" value="0">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-label">
+                        <span>Wind Direction</span>
+                        <span class="slider-value" id="wind-dir-value">N (0°)</span>
+                    </div>
+                    <input type="range" id="wind-direction" min="0" max="360" value="0">
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="section-header">Resource Availability</div>
+
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="ac001-available" checked>
+                        <span class="resource-icon">✈️</span> AC001 (6h remaining)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="ac002-available" checked>
+                        <span class="resource-icon">✈️</span> AC002 (4.5h remaining)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="br001-available" checked>
+                        <span class="resource-icon">🚒</span> BR001 Esquel (8h)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="br002-available" checked>
+                        <span class="resource-icon">🚒</span> BR002 Trevelin (10h)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="br003-available" checked>
+                        <span class="resource-icon">🚒</span> BR003 Esquel (6h)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="wt001-available" checked>
+                        <span class="resource-icon">🚛</span> WT001 (10kL)
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="wt002-available" checked>
+                        <span class="resource-icon">🚛</span> WT002 (8kL)
+                    </label>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <button class="btn btn-primary" id="run-optimization">
+                    ▶ Run Optimization
+                </button>
+                <button class="btn btn-secondary" id="compare-scenarios">
+                    ⚖ Compare to Baseline
+                </button>
+            </div>
+
+            <div class="panel-section api-key-section">
+                <div class="section-header">NASA FIRMS API</div>
+                <input type="text" id="firms-api-key" class="api-key-input"
+                       placeholder="Enter FIRMS MAP_KEY (optional)">
+                <p class="api-key-help">
+                    Get a free key at <a href="https://firms.modaps.eosdis.nasa.gov/api/area/" target="_blank">NASA FIRMS</a>
+                </p>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <main class="map-container">
+            <div id="map"></div>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ef4444;"></div>
+                    <span>High Intensity Fire</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #f59e0b;"></div>
+                    <span>Medium Intensity Fire</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #facc15;"></div>
+                    <span>Low Intensity Fire</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #3b82f6;"></div>
+                    <span>Protected Asset</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #22c55e;"></div>
+                    <span>Resource Base</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line" style="background: linear-gradient(90deg, #22c55e, #ef4444);"></div>
+                    <span>Assignment Route</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel - Results -->
+        <aside class="right-panel">
+            <div class="results-header">
+                <h3>Allocation Plan</h3>
+                <div class="timestamp" id="plan-timestamp">Run optimization to generate plan</div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="dispatch">Dispatch</div>
+                <div class="tab" data-tab="constraints">Constraints</div>
+                <div class="tab" data-tab="audit">Audit</div>
+            </div>
+
+            <div class="tab-content">
+                <!-- Dispatch Tab -->
+                <div class="tab-panel active" id="dispatch-panel">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="objective-value">--</div>
+                            <div class="metric-label">Coverage Score</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="assignment-count">--</div>
+                            <div class="metric-label">Assignments</div>
+                        </div>
+                    </div>
+
+                    <div id="assignments-list">
+                        <div class="loading">
+                            <p>Configure scenario and run optimization</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Constraints Tab -->
+                <div class="tab-panel" id="constraints-panel">
+                    <div id="constraints-list">
+                        <div class="constraint-item">
+                            <div class="constraint-status ok"></div>
+                            <span class="constraint-name">Aircraft Hours</span>
+                            <span class="constraint-slack">--</span>
+                        </div>
+                        <div class="constraint-item">
+                            <div class="constraint-status ok"></div>
+                            <span class="constraint-name">Aircraft Range</span>
+                            <span class="constraint-slack">--</span>
+                        </div>
+                        <div class="constraint-item">
+                            <div class="constraint-status ok"></div>
+                            <span class="constraint-name">Crew Shifts</span>
+                            <span class="constraint-slack">--</span>
+                        </div>
+                        <div class="constraint-item">
+                            <div class="constraint-status ok"></div>
+                            <span class="constraint-name">Cluster Ops Limit</span>
+                            <span class="constraint-slack">--</span>
+                        </div>
+                        <div class="constraint-item">
+                            <div class="constraint-status ok"></div>
+                            <span class="constraint-name">Min Response</span>
+                            <span class="constraint-slack">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Tab -->
+                <div class="tab-panel" id="audit-panel">
+                    <div id="audit-content">
+                        <div class="comparison-card">
+                            <h4>Scenario Comparison</h4>
+                            <p style="font-size: 11px; color: #666; margin-top: 8px;">
+                                Click "Compare to Baseline" to see how your scenario changes the allocation.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            scenario: 'baseline',
+            windSpeed: 0,
+            windDirection: 0,
+            groundedResources: [],
+            firmsApiKey: '',
+            currentPlan: null,
+            baselinePlan: null,
+            fires: [],
+            resources: [],
+            protectedAssets: []
+        };
+
+        // API base URL
+        const API_BASE = '';  // Same origin
+
+        // Initialize Map
+        const INITIAL_VIEW = {
+            longitude: -71.5,
+            latitude: -42.9,
+            zoom: 9,
+            pitch: 45,
+            bearing: 0
+        };
+
+        let deckgl;
+
+        function initMap() {
+            deckgl = new deck.DeckGL({
+                container: 'map',
+                mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+                initialViewState: INITIAL_VIEW,
+                controller: true,
+                layers: []
+            });
+
+            loadInitialData();
+        }
+
+        async function loadInitialData() {
+            try {
+                const [firesRes, resourcesRes, protectedRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/fires`).then(r => r.json()),
+                    fetch(`${API_BASE}/api/resources`).then(r => r.json()),
+                    fetch(`${API_BASE}/api/protected`).then(r => r.json())
+                ]);
+
+                state.fires = firesRes.fires;
+                state.resources = resourcesRes.resources;
+                state.protectedAssets = protectedRes.protected_assets;
+
+                document.getElementById('fire-count').textContent = state.fires.length;
+                document.getElementById('data-source').textContent = firesRes.source === 'demo' ? 'Demo Data' : 'FIRMS Live';
+
+                updateMapLayers();
+            } catch (err) {
+                console.error('Failed to load data:', err);
+            }
+        }
+
+        function getFireColor(intensity) {
+            if (intensity >= 0.8) return [239, 68, 68, 200];  // Red
+            if (intensity >= 0.6) return [245, 158, 11, 200]; // Orange
+            return [250, 204, 21, 200]; // Yellow
+        }
+
+        function getResourceColor(type) {
+            switch (type) {
+                case 'aircraft': return [59, 130, 246, 200];  // Blue
+                case 'brigade': return [34, 197, 94, 200];    // Green
+                case 'water_truck': return [168, 85, 247, 200]; // Purple
+                default: return [156, 163, 175, 200];
+            }
+        }
+
+        function updateMapLayers(assignments = []) {
+            const layers = [];
+
+            // Fire points layer
+            layers.push(new deck.ScatterplotLayer({
+                id: 'fires',
+                data: state.fires,
+                getPosition: d => [d.lon, d.lat],
+                getRadius: d => 300 + d.intensity * 500,
+                getFillColor: d => getFireColor(d.intensity),
+                radiusMinPixels: 8,
+                radiusMaxPixels: 30,
+                pickable: true,
+                onHover: info => {
+                    if (info.object) {
+                        // Could add tooltip here
+                    }
+                }
+            }));
+
+            // Fire heat effect
+            layers.push(new deck.ScatterplotLayer({
+                id: 'fire-glow',
+                data: state.fires,
+                getPosition: d => [d.lon, d.lat],
+                getRadius: d => 600 + d.intensity * 1000,
+                getFillColor: d => [...getFireColor(d.intensity).slice(0, 3), 50],
+                radiusMinPixels: 15,
+                radiusMaxPixels: 50
+            }));
+
+            // Protected assets
+            layers.push(new deck.ScatterplotLayer({
+                id: 'protected',
+                data: state.protectedAssets,
+                getPosition: d => [d.lon, d.lat],
+                getRadius: d => 200 + d.value * 300,
+                getFillColor: [59, 130, 246, 180],
+                radiusMinPixels: 6,
+                radiusMaxPixels: 20,
+                stroked: true,
+                lineWidthMinPixels: 2,
+                getLineColor: [59, 130, 246, 255]
+            }));
+
+            // Resource bases
+            layers.push(new deck.ScatterplotLayer({
+                id: 'resources',
+                data: state.resources,
+                getPosition: d => [d.lon, d.lat],
+                getRadius: 250,
+                getFillColor: d => getResourceColor(d.type),
+                radiusMinPixels: 8,
+                radiusMaxPixels: 15
+            }));
+
+            // Assignment arcs
+            if (assignments.length > 0) {
+                const arcData = assignments.map(a => {
+                    const resource = state.resources.find(r => r.id === a.resource_id);
+                    const fire = state.fires.find(f => f.id === a.fire_id);
+                    if (resource && fire) {
+                        return {
+                            source: [resource.lon, resource.lat],
+                            target: [fire.lon, fire.lat],
+                            resource: resource,
+                            fire: fire,
+                            assignment: a
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+
+                layers.push(new deck.ArcLayer({
+                    id: 'assignments',
+                    data: arcData,
+                    getSourcePosition: d => d.source,
+                    getTargetPosition: d => d.target,
+                    getSourceColor: d => getResourceColor(d.resource.type),
+                    getTargetColor: [239, 68, 68, 255],
+                    getWidth: 3,
+                    getTilt: 15
+                }));
+            }
+
+            deckgl.setProps({ layers });
+        }
+
+        // Run optimization
+        async function runOptimization() {
+            const btn = document.getElementById('run-optimization');
+            btn.textContent = '⏳ Optimizing...';
+            btn.disabled = true;
+
+            try {
+                // Collect grounded resources
+                const grounded = [];
+                ['ac001', 'ac002', 'br001', 'br002', 'br003', 'wt001', 'wt002'].forEach(id => {
+                    const checkbox = document.getElementById(`${id}-available`);
+                    if (!checkbox.checked) {
+                        grounded.push(id.toUpperCase());
+                    }
+                });
+
+                const params = new URLSearchParams({
+                    scenario: state.scenario,
+                    wind_speed: state.windSpeed,
+                    wind_direction: state.windDirection,
+                    grounded: grounded.join(',')
+                });
+
+                const response = await fetch(`${API_BASE}/api/optimize?${params}`);
+                const plan = await response.json();
+
+                state.currentPlan = plan;
+
+                // Update UI
+                renderPlan(plan);
+                updateMapLayers(plan.assignments);
+
+            } catch (err) {
+                console.error('Optimization failed:', err);
+                document.getElementById('assignments-list').innerHTML =
+                    '<div class="loading"><p>Error: ' + err.message + '</p></div>';
+            } finally {
+                btn.textContent = '▶ Run Optimization';
+                btn.disabled = false;
+            }
+        }
+
+        function renderPlan(plan) {
+            // Update metrics
+            document.getElementById('objective-value').textContent = plan.objective_value.toFixed(1);
+            document.getElementById('assignment-count').textContent = plan.assignments.length;
+            document.getElementById('plan-timestamp').textContent =
+                `Generated: ${new Date(plan.timestamp).toLocaleTimeString()} | ${plan.scenario}`;
+
+            // Render assignments
+            const list = document.getElementById('assignments-list');
+
+            if (plan.assignments.length === 0) {
+                list.innerHTML = '<div class="loading"><p>No assignments generated</p></div>';
+                return;
+            }
+
+            list.innerHTML = plan.assignments.map(a => {
+                const resourceType = a.resource_id.startsWith('AC') ? '✈️' :
+                                    a.resource_id.startsWith('BR') ? '🚒' : '🚛';
+
+                return `
+                    <div class="assignment-card">
+                        <div class="assignment-header">
+                            <span class="assignment-priority">${a.priority}</span>
+                            <div class="assignment-route">
+                                <span>${resourceType} ${a.resource_id}</span>
+                                <span class="assignment-arrow">→</span>
+                                <span>🔥 ${a.fire_id}</span>
+                            </div>
+                        </div>
+                        <div class="assignment-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Travel Time</span>
+                                <span class="detail-value">${a.travel_time_hours.toFixed(1)}h</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Contribution</span>
+                                <span class="detail-value">+${a.contribution.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <div class="assignment-explanation">${a.explanation}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update constraints
+            renderConstraints(plan.binding_constraints);
+        }
+
+        function renderConstraints(bindingConstraints) {
+            const bindingNames = new Set(bindingConstraints.map(c => c.name));
+
+            const constraintItems = document.querySelectorAll('#constraints-panel .constraint-item');
+            constraintItems.forEach(item => {
+                const name = item.querySelector('.constraint-name').textContent.toLowerCase()
+                    .replace(/\s+/g, '_');
+
+                const status = item.querySelector('.constraint-status');
+                const isBinding = bindingConstraints.some(c =>
+                    c.name.includes(name) || name.includes(c.name.split('_')[0])
+                );
+
+                status.className = `constraint-status ${isBinding ? 'binding' : 'ok'}`;
+            });
+        }
+
+        async function compareScenarios() {
+            const btn = document.getElementById('compare-scenarios');
+            btn.textContent = '⏳ Comparing...';
+            btn.disabled = true;
+
+            try {
+                const grounded = [];
+                ['ac001', 'ac002', 'br001', 'br002', 'br003', 'wt001', 'wt002'].forEach(id => {
+                    const checkbox = document.getElementById(`${id}-available`);
+                    if (!checkbox.checked) grounded.push(id.toUpperCase());
+                });
+
+                const params = new URLSearchParams({
+                    wind_speed: state.windSpeed,
+                    wind_direction: state.windDirection,
+                    grounded: grounded.join(',')
+                });
+
+                const response = await fetch(`${API_BASE}/api/scenarios?${params}`);
+                const data = await response.json();
+
+                renderComparison(data);
+
+                // Switch to audit tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelector('[data-tab="audit"]').classList.add('active');
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                document.getElementById('audit-panel').classList.add('active');
+
+            } catch (err) {
+                console.error('Comparison failed:', err);
+            } finally {
+                btn.textContent = '⚖ Compare to Baseline';
+                btn.disabled = false;
+            }
+        }
+
+        function renderComparison(data) {
+            const { baseline, alternative, comparison } = data;
+            const audit = document.getElementById('audit-content');
+
+            const deltaClass = comparison.objective_delta >= 0 ? 'positive' : 'negative';
+            const deltaSign = comparison.objective_delta >= 0 ? '+' : '';
+
+            audit.innerHTML = `
+                <div class="comparison-card">
+                    <h4>Objective Value Change</h4>
+                    <div class="comparison-delta ${deltaClass}">
+                        ${deltaSign}${comparison.objective_delta.toFixed(2)}
+                    </div>
+                    <p style="font-size: 11px; color: #888;">
+                        Baseline: ${baseline.objective_value.toFixed(2)} →
+                        Scenario: ${alternative.objective_value.toFixed(2)}
+                    </p>
+                </div>
+
+                <div class="comparison-card">
+                    <h4>Assignment Changes</h4>
+                    ${comparison.assignment_changes.map(c => `
+                        <div class="change-item">
+                            <span class="change-badge ${c.change}">${c.change}</span>
+                            <span>🔥 ${c.fire_id}</span>
+                            ${c.from ? `<span style="color:#666">${c.from} → ${c.to}</span>` : ''}
+                        </div>
+                    `).join('') || '<p style="font-size:11px;color:#666">No changes</p>'}
+                </div>
+
+                ${comparison.new_binding_constraints.length > 0 ? `
+                    <div class="comparison-card">
+                        <h4>New Binding Constraints</h4>
+                        ${comparison.new_binding_constraints.map(c => `
+                            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+                                <div class="constraint-status binding"></div>
+                                <span style="font-size:12px">${c.replace(/_/g, ' ')}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                <div class="comparison-card">
+                    <h4>Analysis</h4>
+                    <p style="font-size:12px;line-height:1.6;color:#ccc">
+                        ${comparison.explanation}
+                    </p>
+                </div>
+            `;
+        }
+
+        // Direction helper
+        function getWindDirectionLabel(degrees) {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round(degrees / 45) % 8;
+            return `${directions[index]} (${degrees}°)`;
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+
+            // Scenario cards
+            document.querySelectorAll('.scenario-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+
+                    const scenario = card.dataset.scenario;
+                    state.scenario = scenario;
+
+                    // Apply presets
+                    if (scenario === 'baseline') {
+                        document.getElementById('wind-speed').value = 0;
+                        document.getElementById('wind-direction').value = 0;
+                        state.windSpeed = 0;
+                        state.windDirection = 0;
+                        document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = true);
+                    } else if (scenario === 'wind') {
+                        document.getElementById('wind-speed').value = 35;
+                        document.getElementById('wind-direction').value = 270;
+                        state.windSpeed = 35;
+                        state.windDirection = 270;
+                    } else if (scenario === 'grounded') {
+                        document.getElementById('ac001-available').checked = false;
+                    }
+
+                    // Update displays
+                    document.getElementById('wind-speed-value').textContent = `${state.windSpeed} km/h`;
+                    document.getElementById('wind-dir-value').textContent = getWindDirectionLabel(state.windDirection);
+                });
+            });
+
+            // Sliders
+            document.getElementById('wind-speed').addEventListener('input', (e) => {
+                state.windSpeed = parseInt(e.target.value);
+                document.getElementById('wind-speed-value').textContent = `${state.windSpeed} km/h`;
+            });
+
+            document.getElementById('wind-direction').addEventListener('input', (e) => {
+                state.windDirection = parseInt(e.target.value);
+                document.getElementById('wind-dir-value').textContent = getWindDirectionLabel(state.windDirection);
+            });
+
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    const tabId = tab.dataset.tab;
+                    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                    document.getElementById(`${tabId}-panel`).classList.add('active');
+                });
+            });
+
+            // Buttons
+            document.getElementById('run-optimization').addEventListener('click', runOptimization);
+            document.getElementById('compare-scenarios').addEventListener('click', compareScenarios);
+        });
+    </script>
+</body>
+</html>

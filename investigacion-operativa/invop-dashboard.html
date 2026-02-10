@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INVOP AI — Dashboard de Control</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--p:#6C3CE1;--pl:#8B5CF6;--ac:#06D6A0;--bg:#0F0F1A;--bg2:#1A1A2E;--card:#22223A;--card2:#2A2A44;--tx:#E8E8F0;--ts:#9898B0;--bd:#33334D;--ok:#06D6A0;--wr:#FFD166;--dn:#EF476F}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding:1.5rem}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.logo{display:flex;align-items:center;gap:.6rem;font-size:1.2rem;font-weight:800}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--p),var(--pl));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff}
+.logo span{color:var(--ac)}
+.header-right{display:flex;align-items:center;gap:1rem}
+.refresh-btn{padding:.5rem 1rem;background:var(--card);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:.8rem;cursor:pointer;transition:all .2s;font-family:inherit}
+.refresh-btn:hover{border-color:var(--ac);color:var(--ac)}
+.last-update{font-size:.75rem;color:var(--ts)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.5rem;position:relative;overflow:hidden;transition:all .3s}
+.kpi:hover{border-color:var(--pl);transform:translateY(-2px)}
+.kpi-label{font-size:.75rem;color:var(--ts);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem}
+.kpi-value{font-size:2rem;font-weight:800;line-height:1.2}
+.kpi-sub{font-size:.72rem;color:var(--ts);margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+.kpi-trend{font-size:.72rem;font-weight:600;padding:.15rem .4rem;border-radius:4px}
+.kpi-trend.up{background:rgba(6,214,160,.12);color:var(--ac)}
+.kpi-trend.down{background:rgba(239,71,111,.12);color:var(--dn)}
+.kpi .kpi-icon{position:absolute;top:1rem;right:1rem;font-size:1.5rem;opacity:.3}
+.kpi-value.purple{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.section{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.section h3{font-size:.9rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.section h3 span{color:var(--ac)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:768px){.row2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{text-align:left;padding:.6rem .75rem;color:var(--ts);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bd)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(51,51,77,.5)}
+tr:hover td{background:rgba(108,60,225,.04)}
+.bar-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+.bar-label{font-size:.78rem;width:80px;color:var(--ts);text-align:right;flex-shrink:0}
+.bar-track{flex:1;height:24px;background:var(--card2);border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:.5rem;font-size:.7rem;font-weight:600;color:#fff;min-width:30px}
+.bar-fill.lp{background:linear-gradient(90deg,var(--pl),#9B7DFF)}
+.bar-fill.stock{background:linear-gradient(90deg,var(--ac),#4AE8C4)}
+.bar-fill.queue{background:linear-gradient(90deg,var(--wr),#FFE066)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.4rem}
+.dot.lp{background:var(--pl)}.dot.stock{background:var(--ac)}.dot.queue{background:var(--wr)}.dot.free{background:var(--ts)}.dot.pro{background:var(--ac)}
+.cost-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid rgba(51,51,77,.3)}
+.cost-row:last-child{border:none}
+.cost-label{font-size:.82rem;color:var(--ts)}
+.cost-value{font-size:.82rem;font-weight:600}
+.alert-banner{padding:1rem 1.5rem;border-radius:12px;margin-bottom:1rem;font-size:.82rem;display:flex;align-items:center;gap:.75rem}
+.alert-banner.warn{background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3);color:var(--wr)}
+.alert-banner.ok{background:rgba(6,214,160,.08);border:1px solid rgba(6,214,160,.3);color:var(--ac)}
+.config-input{background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:.4rem .6rem;color:var(--tx);font-size:.8rem;width:100px;font-family:inherit}
+.config-input:focus{outline:none;border-color:var(--pl)}
+.config-row{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0}
+.config-label{font-size:.8rem;color:var(--ts)}
+</style>
+</head>
+<body>
+
+<div class="header">
+ <div class="logo"><div class="logo-icon">I</div>INVOP<span>.AI</span> — Dashboard</div>
+ <div class="header-right">
+  <span class="last-update" id="lastUpdate"></span>
+  <button class="refresh-btn" onclick="refreshData()">Actualizar datos</button>
+ </div>
+</div>
+
+<div id="alerts"></div>
+
+<!-- KPIs -->
+<div class="grid" id="kpis">
+ <div class="kpi">
+  <div class="kpi-label">Usuarios registrados</div>
+  <div class="kpi-value purple" id="kUsers">0</div>
+  <div class="kpi-sub"><span class="kpi-trend up" id="kUsersTrend">—</span> esta semana</div>
+  <div class="kpi-icon">👤</div>
+ </div>
+ <div class="kpi">
+  <div class="kpi-label">Problemas resueltos</div>
+  <div class="kpi-value" id="kSolves" style="color:var(--ac)">0</div>
+  <div class="kpi-sub"><span id="kSolvesAvg">0</span> promedio por usuario</div>
+  <div class="kpi-icon">✅</div>
+ </div>
+ <div class="kpi">
+  <div class="kpi-label">Usuarios Pro</div>
+  <div class="kpi-value" id="kPro" style="color:var(--pl)">0</div>
+  <div class="kpi-sub">Tasa conversión: <strong id="kConvRate">0%</strong></div>
+  <div class="kpi-icon">⭐</div>
+ </div>
+ <div class="kpi">
+  <div class="kpi-label">MRR (ingreso mensual)</div>
+  <div class="kpi-value" id="kMRR" style="color:var(--wr)">$0</div>
+  <div class="kpi-sub">ARR: <strong id="kARR">$0</strong></div>
+  <div class="kpi-icon">💰</div>
+ </div>
+</div>
+
+<div class="row2">
+ <!-- Módulos -->
+ <div class="section">
+  <h3>📊 Uso por <span>módulo</span></h3>
+  <div id="moduleBars">
+   <div class="bar-row"><div class="bar-label">LP</div><div class="bar-track"><div class="bar-fill lp" id="barLP" style="width:0%">0</div></div></div>
+   <div class="bar-row"><div class="bar-label">Inventarios</div><div class="bar-track"><div class="bar-fill stock" id="barStock" style="width:0%">0</div></div></div>
+   <div class="bar-row"><div class="bar-label">Colas</div><div class="bar-track"><div class="bar-fill queue" id="barQueue" style="width:0%">0</div></div></div>
+  </div>
+  <div style="margin-top:1rem;font-size:.75rem;color:var(--ts)">
+   <span class="dot lp"></span>Prog. Lineal &nbsp;
+   <span class="dot stock"></span>Inventarios &nbsp;
+   <span class="dot queue"></span>T. Colas
+  </div>
+ </div>
+
+ <!-- Costos proyectados -->
+ <div class="section">
+  <h3>💸 Proyección de <span>costos</span></h3>
+  <div class="cost-row"><span class="cost-label">Netlify (hosting)</span><span class="cost-value">$0/mes <span style="color:var(--ac);font-size:.7rem">(free tier)</span></span></div>
+  <div class="cost-row"><span class="cost-label">Dominio (invop.ai)</span><span class="cost-value" id="cDomain">~$30/año</span></div>
+  <div class="cost-row"><span class="cost-label">Google Cloud (OAuth)</span><span class="cost-value">$0/mes <span style="color:var(--ac);font-size:.7rem">(free tier)</span></span></div>
+  <div class="cost-row"><span class="cost-label">Stripe (2.9% + $0.30/txn)</span><span class="cost-value" id="cStripe">$0/mes</span></div>
+  <div class="cost-row"><span class="cost-label">LLM API (si se agrega)</span><span class="cost-value" id="cLLM">$0/mes</span></div>
+  <div class="cost-row" style="border-top:2px solid var(--bd);padding-top:.75rem;margin-top:.25rem"><span class="cost-label" style="font-weight:700;color:var(--tx)">Costo total estimado</span><span class="cost-value" style="font-size:1rem;color:var(--wr)" id="cTotal">~$2.50/mes</span></div>
+ </div>
+</div>
+
+<div class="row2">
+ <!-- Simulador de escala -->
+ <div class="section">
+  <h3>🚀 Simulador de <span>escala</span></h3>
+  <p style="font-size:.78rem;color:var(--ts);margin-bottom:1rem">Ajustá los números para proyectar ingresos y costos a escala.</p>
+  <div class="config-row"><span class="config-label">Usuarios totales</span><input class="config-input" id="simUsers" type="number" value="100" onchange="simulate()"></div>
+  <div class="config-row"><span class="config-label">Conversión a Pro (%)</span><input class="config-input" id="simConv" type="number" value="5" onchange="simulate()"></div>
+  <div class="config-row"><span class="config-label">Precio Pro ($/mes)</span><input class="config-input" id="simPrice" type="number" value="2.99" step="0.01" onchange="simulate()"></div>
+  <div class="config-row"><span class="config-label">Problemas/user/mes</span><input class="config-input" id="simProbs" type="number" value="8" onchange="simulate()"></div>
+  <div class="config-row"><span class="config-label">Costo LLM por query ($)</span><input class="config-input" id="simLLMCost" type="number" value="0" step="0.001" onchange="simulate()"></div>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:2px solid var(--bd)">
+   <div class="cost-row"><span class="cost-label">Usuarios Pro</span><span class="cost-value" id="simProUsers">5</span></div>
+   <div class="cost-row"><span class="cost-label">MRR bruto</span><span class="cost-value" style="color:var(--ac)" id="simMRR">$14.95</span></div>
+   <div class="cost-row"><span class="cost-label">Stripe fees</span><span class="cost-value" style="color:var(--dn)" id="simStripeFee">-$1.93</span></div>
+   <div class="cost-row"><span class="cost-label">Costo LLM total</span><span class="cost-value" style="color:var(--dn)" id="simLLMTotal">$0</span></div>
+   <div class="cost-row"><span class="cost-label" style="font-weight:700;color:var(--tx)">MRR neto</span><span class="cost-value" style="font-size:1.1rem" id="simNet">$13.02</span></div>
+   <div class="cost-row"><span class="cost-label" style="font-weight:700;color:var(--tx)">ARR proyectado</span><span class="cost-value" style="font-size:1.1rem;color:var(--pl)" id="simARR">$156.24</span></div>
+  </div>
+ </div>
+
+ <!-- Umbrales de alerta -->
+ <div class="section">
+  <h3>⚠️ Umbrales y <span>alertas</span></h3>
+  <p style="font-size:.78rem;color:var(--ts);margin-bottom:1rem">Configurá alertas para cuando se excedan estos límites.</p>
+  <div class="config-row"><span class="config-label">Alerta LLM $/mes ></span><input class="config-input" id="alertLLM" type="number" value="50" onchange="checkAlerts()"></div>
+  <div class="config-row"><span class="config-label">Alerta queries/día ></span><input class="config-input" id="alertQueries" type="number" value="500" onchange="checkAlerts()"></div>
+  <div class="config-row"><span class="config-label">Alerta Stripe fees % ></span><input class="config-input" id="alertStripe" type="number" value="15" onchange="checkAlerts()"></div>
+  <div style="margin-top:1.5rem">
+   <h3 style="font-size:.8rem">📋 Checklist <span>pre-escala</span></h3>
+   <div style="font-size:.78rem;color:var(--ts);display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem">
+    <label><input type="checkbox"> Rate limiting en webhook</label>
+    <label><input type="checkbox"> Cache de soluciones repetidas</label>
+    <label><input type="checkbox"> Minificar HTML para producción</label>
+    <label><input type="checkbox"> CDN para assets estáticos</label>
+    <label><input type="checkbox"> Backup automático de Google Sheet</label>
+    <label><input type="checkbox"> Monitoring con Netlify Analytics</label>
+    <label><input type="checkbox"> Error tracking (Sentry free tier)</label>
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- Tabla de usuarios recientes -->
+<div class="section">
+ <h3>👥 Usuarios <span>recientes</span></h3>
+ <p style="font-size:.78rem;color:var(--ts);margin-bottom:1rem">Datos del Google Sheet de registro. <a href="https://docs.google.com/spreadsheets/d/1Bn1rnujllwa6t15S6WW69IVKZW34em3eKdtTzZ6t2P0/edit" target="_blank" style="color:var(--pl)">Abrir Sheet</a></p>
+ <table>
+  <thead><tr><th>Fecha</th><th>Nombre</th><th>Email</th><th>Plan</th></tr></thead>
+  <tbody id="usersTable">
+   <tr><td colspan="4" style="text-align:center;color:var(--ts);padding:2rem">Cargando datos del Sheet... <br><small>Si no carga, verificá el Apps Script.</small></td></tr>
+  </tbody>
+ </table>
+</div>
+
+<!-- Stack tecnológico -->
+<div class="section">
+ <h3>🧱 Stack <span>tecnológico</span></h3>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:.5rem">
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--pl);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">Frontend & Hosting</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">HTML/CSS/JS</strong> <span style="color:var(--ts)">— Single-file app (~130KB)</span></div>
+    <div><strong style="color:var(--tx)">Inter</strong> <span style="color:var(--ts)">— Google Fonts (tipografía)</span></div>
+    <div><strong style="color:var(--tx)">Netlify</strong> <span style="color:var(--ts)">— Hosting estático + SSL + CDN</span></div>
+    <div><strong style="color:var(--tx)">GoDaddy</strong> <span style="color:var(--ts)">— Dominio invop.ai + DNS</span></div>
+   </div>
+  </div>
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--ac);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">Solvers & Motor IO</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">Simplex (custom JS)</strong> <span style="color:var(--ts)">— Programación Lineal</span></div>
+    <div><strong style="color:var(--tx)">EOQ solver (custom JS)</strong> <span style="color:var(--ts)">— Inventarios + sensibilidad</span></div>
+    <div><strong style="color:var(--tx)">M/M/M solver (custom JS)</strong> <span style="color:var(--ts)">— Colas + análisis económico</span></div>
+    <div><strong style="color:var(--tx)">NLP regex engine</strong> <span style="color:var(--ts)">— Parsing de lenguaje natural</span></div>
+   </div>
+  </div>
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--wr);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">Autenticación & Pagos</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">Google Identity Services</strong> <span style="color:var(--ts)">— OAuth 2.0 Sign-In</span></div>
+    <div><strong style="color:var(--tx)">Google Cloud Console</strong> <span style="color:var(--ts)">— Credenciales OAuth</span></div>
+    <div><strong style="color:var(--tx)">Stripe</strong> <span style="color:var(--ts)">— Payment Links ($2.99/mes Pro)</span></div>
+    <div><strong style="color:var(--tx)">Mercury Bank</strong> <span style="color:var(--ts)">— Cuenta bancaria (payouts)</span></div>
+   </div>
+  </div>
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--dn);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">Data & Logging</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">Google Sheets</strong> <span style="color:var(--ts)">— Registro de usuarios</span></div>
+    <div><strong style="color:var(--tx)">Google Apps Script</strong> <span style="color:var(--ts)">— Webhook receptor</span></div>
+    <div><strong style="color:var(--tx)">SheetJS (XLSX)</strong> <span style="color:var(--ts)">— Export logs a Excel</span></div>
+    <div><strong style="color:var(--tx)">localStorage</strong> <span style="color:var(--ts)">— Sesión + contador de uso</span></div>
+   </div>
+  </div>
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--ts);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">UX & Diseño</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">SVG Avatar animado</strong> <span style="color:var(--ts)">— Estado: idle/thinking/solved</span></div>
+    <div><strong style="color:var(--tx)">CSS custom (dark theme)</strong> <span style="color:var(--ts)">— Purple + Green accent</span></div>
+    <div><strong style="color:var(--tx)">IntersectionObserver</strong> <span style="color:var(--ts)">— Scroll animations landing</span></div>
+    <div><strong style="color:var(--tx)">Markdown renderer</strong> <span style="color:var(--ts)">— Formato en chat (custom)</span></div>
+   </div>
+  </div>
+
+  <div style="padding:1rem;background:var(--card2);border-radius:12px">
+   <div style="font-size:.72rem;color:var(--pl);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.6rem">Desarrollo & Build</div>
+   <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.8rem">
+    <div><strong style="color:var(--tx)">Claude (Anthropic)</strong> <span style="color:var(--ts)">— Desarrollo + arquitectura</span></div>
+    <div><strong style="color:var(--tx)">Python / openpyxl</strong> <span style="color:var(--ts)">— Templates Excel</span></div>
+    <div><strong style="color:var(--tx)">Node.js</strong> <span style="color:var(--ts)">— Testing automatizado</span></div>
+    <div><strong style="color:var(--tx)">Git + Netlify Deploy</strong> <span style="color:var(--ts)">— Drag & drop deploy</span></div>
+   </div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────
+const SHEET_WEBAPP='https://script.google.com/macros/s/AKfycbzDDWKIChx7LEdyyyv0_cornFJAlacDyoCSu38jE7qwtdpRHuvc7jx5PhM03eEQzf1j/exec';
+
+// ─── SIMULATE ────────────────────────────────────────────────
+function simulate(){
+ const users=+document.getElementById('simUsers').value||0;
+ const conv=(+document.getElementById('simConv').value||0)/100;
+ const price=+document.getElementById('simPrice').value||0;
+ const probs=+document.getElementById('simProbs').value||0;
+ const llmCost=+document.getElementById('simLLMCost').value||0;
+
+ const proUsers=Math.round(users*conv);
+ const mrr=proUsers*price;
+ const stripeFee=proUsers*(price*0.029+0.30);
+ const totalQueries=users*probs;
+ const llmTotal=totalQueries*llmCost;
+ const net=mrr-stripeFee-llmTotal;
+ const arr=net*12;
+
+ document.getElementById('simProUsers').textContent=proUsers;
+ document.getElementById('simMRR').textContent='$'+mrr.toFixed(2);
+ document.getElementById('simStripeFee').textContent='-$'+stripeFee.toFixed(2);
+ document.getElementById('simLLMTotal').textContent=llmTotal>0?'-$'+llmTotal.toFixed(2):'$0';
+ document.getElementById('simNet').textContent=(net>=0?'$':'-$')+Math.abs(net).toFixed(2);
+ document.getElementById('simNet').style.color=net>=0?'var(--ac)':'var(--dn)';
+ document.getElementById('simARR').textContent=(arr>=0?'$':'-$')+Math.abs(arr).toFixed(2);
+ document.getElementById('simARR').style.color=arr>=0?'var(--pl)':'var(--dn)';
+
+ // Update main KPIs with sim data
+ document.getElementById('cStripe').textContent='$'+stripeFee.toFixed(2)+'/mes';
+ document.getElementById('cLLM').textContent=llmTotal>0?'$'+llmTotal.toFixed(2)+'/mes':'$0/mes';
+ const totalCost=2.50+stripeFee+llmTotal;
+ document.getElementById('cTotal').textContent='~$'+totalCost.toFixed(2)+'/mes';
+
+ checkAlerts(totalQueries,llmTotal,stripeFee,mrr);
+}
+
+function checkAlerts(queries,llmCost,stripeFee,mrr){
+ const el=document.getElementById('alerts');
+ let html='';
+ const aLLM=+document.getElementById('alertLLM').value;
+ const aQ=+document.getElementById('alertQueries').value;
+ const aS=+document.getElementById('alertStripe').value;
+
+ if(llmCost>aLLM)html+=`<div class="alert-banner warn">⚠️ Costo LLM proyectado ($${llmCost.toFixed(2)}/mes) excede umbral de $${aLLM}/mes</div>`;
+ if(queries>aQ*30)html+=`<div class="alert-banner warn">⚠️ Queries proyectadas (${queries}/mes) exceden ${aQ}/día</div>`;
+ if(mrr>0&&(stripeFee/mrr*100)>aS)html+=`<div class="alert-banner warn">⚠️ Stripe fees (${(stripeFee/mrr*100).toFixed(1)}%) exceden ${aS}% del ingreso</div>`;
+ if(!html)html='<div class="alert-banner ok">✅ Todos los indicadores dentro de parámetros normales</div>';
+ el.innerHTML=html;
+}
+
+function refreshData(){
+ document.getElementById('lastUpdate').textContent='Actualizando...';
+ // Try to fetch from Google Sheet via Apps Script
+ fetch(SHEET_WEBAPP+'?action=dashboard',{mode:'cors'})
+  .then(r=>r.json())
+  .then(data=>{
+   if(data.users){
+    document.getElementById('kUsers').textContent=data.users.length;
+    const tbody=document.getElementById('usersTable');
+    tbody.innerHTML=data.users.slice(-20).reverse().map(u=>
+     `<tr><td>${u.timestamp?new Date(u.timestamp).toLocaleDateString('es-AR'):'-'}</td><td>${u.name||'-'}</td><td>${u.email||'-'}</td><td><span class="dot ${u.pro?'pro':'free'}"></span>${u.pro?'Pro':'Free'}</td></tr>`
+    ).join('');
+   }
+   document.getElementById('lastUpdate').textContent='Última actualización: '+new Date().toLocaleTimeString('es-AR');
+  })
+  .catch(()=>{
+   document.getElementById('lastUpdate').textContent='Sin conexión al Sheet — usá datos manuales';
+  });
+}
+
+// Init
+simulate();
+refreshData();
+</script>
+</body>
+</html>
