@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INVOP AI — Admin Dashboard</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--p:#6C3CE1;--pl:#8B5CF6;--ac:#06D6A0;--bg:#0F0F1A;--bg2:#1A1A2E;--card:#22223A;--card2:#2A2A44;--tx:#E8E8F0;--ts:#9898B0;--bd:#33334D;--ok:#06D6A0;--wr:#FFD166;--dn:#EF476F}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+
+/* ── Auth Gate ────────────────────────────── */
+.auth-gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:999}
+.auth-box{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:3rem;text-align:center;max-width:420px;width:90%}
+.auth-box h2{font-size:1.3rem;margin-bottom:.5rem}
+.auth-box p{font-size:.85rem;color:var(--ts);margin-bottom:1.5rem}
+.auth-box .logo{font-size:1.4rem;font-weight:800;margin-bottom:1.5rem}
+.auth-box .logo span{color:var(--ac)}
+.auth-error{color:var(--dn);font-size:.82rem;margin-top:1rem;display:none}
+
+/* ── Header ───────────────────────────────── */
+.admin-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;border-bottom:1px solid var(--bd);background:var(--bg2);position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:.6rem;font-size:1.1rem;font-weight:800}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--p),var(--pl));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff}
+.logo span{color:var(--ac)}
+.header-right{display:flex;align-items:center;gap:1rem}
+.user-email{font-size:.78rem;color:var(--ts)}
+.logout-btn{padding:.4rem .8rem;background:transparent;border:1px solid var(--bd);border-radius:6px;color:var(--ts);font-size:.75rem;cursor:pointer;font-family:inherit;transition:all .2s}
+.logout-btn:hover{border-color:var(--dn);color:var(--dn)}
+.back-link{color:var(--pl);text-decoration:none;font-size:.8rem;transition:color .2s}
+.back-link:hover{color:var(--ac)}
+
+/* ── Main ─────────────────────────────────── */
+.dashboard{padding:1.5rem;max-width:1400px;margin:0 auto;display:none}
+
+/* ── KPI Grid ─────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.25rem;position:relative;overflow:hidden;transition:all .3s}
+.kpi:hover{border-color:var(--pl);transform:translateY(-2px)}
+.kpi-label{font-size:.7rem;color:var(--ts);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem}
+.kpi-value{font-size:1.8rem;font-weight:800;line-height:1.2}
+.kpi-sub{font-size:.72rem;color:var(--ts);margin-top:.25rem;display:flex;align-items:center;gap:.3rem}
+.kpi-trend{font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px}
+.kpi-trend.up{background:rgba(6,214,160,.12);color:var(--ac)}
+.kpi-trend.dn{background:rgba(239,71,111,.12);color:var(--dn)}
+.kpi .kpi-icon{position:absolute;top:.8rem;right:.8rem;font-size:1.4rem;opacity:.25}
+.purple{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ── Sections ─────────────────────────────── */
+.section{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.section h3{font-size:.88rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.section h3 span{color:var(--ac)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+@media(max-width:900px){.row2{grid-template-columns:1fr}}
+
+/* ── Bar Chart ────────────────────────────── */
+.bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem}
+.bar-label{font-size:.72rem;width:100px;color:var(--ts);text-align:right;flex-shrink:0}
+.bar-track{flex:1;height:26px;background:var(--card2);border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:.5rem;font-size:.7rem;font-weight:600;color:#fff;min-width:28px}
+.mod-lp{background:linear-gradient(90deg,#6C3CE1,#9B7DFF)}
+.mod-stock{background:linear-gradient(90deg,#06D6A0,#4AE8C4)}
+.mod-queue{background:linear-gradient(90deg,#FFD166,#FFE066)}
+.mod-invest{background:linear-gradient(90deg,#3B82F6,#60A5FA)}
+.mod-forecast{background:linear-gradient(90deg,#F59E0B,#FBBF24)}
+.mod-rent{background:linear-gradient(90deg,#EF476F,#F87171)}
+.mod-fc{background:linear-gradient(90deg,#8B5CF6,#A78BFA)}
+
+/* ── Tables ───────────────────────────────── */
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:.55rem .6rem;color:var(--ts);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bd)}
+td{padding:.55rem .6rem;border-bottom:1px solid rgba(51,51,77,.4)}
+tr:hover td{background:rgba(108,60,225,.04)}
+.tag{display:inline-block;padding:.1rem .4rem;border-radius:4px;font-size:.68rem;font-weight:600}
+.tag-pro{background:rgba(6,214,160,.12);color:var(--ac)}
+.tag-free{background:rgba(152,152,176,.12);color:var(--ts)}
+.tag-ok{background:rgba(6,214,160,.12);color:var(--ac)}
+.tag-err{background:rgba(239,71,111,.12);color:var(--dn)}
+
+/* ── Simulator ────────────────────────────── */
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .8rem}
+.sim-row{display:flex;align-items:center;justify-content:space-between}
+.sim-label{font-size:.8rem;color:var(--ts)}
+.sim-input{background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:.35rem .5rem;color:var(--tx);font-size:.8rem;width:90px;font-family:inherit;text-align:right}
+.sim-input:focus{outline:none;border-color:var(--pl)}
+.sim-result{margin-top:1rem;padding-top:1rem;border-top:2px solid var(--bd)}
+.sim-result-row{display:flex;justify-content:space-between;padding:.35rem 0;font-size:.82rem}
+.cost-row{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(51,51,77,.3);font-size:.82rem}
+.cost-row:last-child{border:none}
+
+/* ── Trends Table ─────────────────────────── */
+.trends-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:2px;margin-top:.5rem}
+.trend-day{background:var(--card2);border-radius:4px;padding:.4rem;text-align:center;font-size:.65rem}
+.trend-day .td-date{color:var(--ts);margin-bottom:.15rem}
+.trend-day .td-val{font-weight:700;font-size:.8rem}
+
+/* ── Loading ──────────────────────────────── */
+.loading{text-align:center;padding:3rem;color:var(--ts);font-size:.85rem}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--bd);border-top-color:var(--pl);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Footer ───────────────────────────────── */
+.footer{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;margin-top:1rem}
+.refresh-btn{padding:.5rem 1rem;background:var(--card);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:.8rem;cursor:pointer;transition:all .2s;font-family:inherit}
+.refresh-btn:hover{border-color:var(--ac);color:var(--ac)}
+.last-update{font-size:.72rem;color:var(--ts)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ AUTH GATE ═══════════ -->
+<div class="auth-gate" id="authGate">
+ <div class="auth-box">
+  <div class="logo"><div class="logo-icon">I</div>INVOP<span>.AI</span></div>
+  <h2>Admin Dashboard</h2>
+  <p>Acceso restringido. Iniciá sesión con tu cuenta autorizada.</p>
+  <div id="googleSignInBtn"></div>
+  <div class="auth-error" id="authError">Acceso denegado. Solo el administrador puede ingresar.</div>
+ </div>
+</div>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<div class="admin-header" id="adminHeader" style="display:none">
+ <div class="logo"><div class="logo-icon">I</div>INVOP<span>.AI</span> — Admin</div>
+ <div class="header-right">
+  <a href="/" class="back-link">← Volver a la app</a>
+  <span class="user-email" id="userEmail"></span>
+  <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+ </div>
+</div>
+
+<!-- ═══════════ DASHBOARD ═══════════ -->
+<div class="dashboard" id="dashboard">
+
+ <!-- Loading state -->
+ <div class="loading" id="loadingState">
+  <div class="spinner"></div><br>Cargando datos del dashboard...
+ </div>
+
+ <!-- Content (hidden until data loads) -->
+ <div id="dashContent" style="display:none">
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+   <div class="kpi">
+    <div class="kpi-label">Usuarios registrados</div>
+    <div class="kpi-value purple" id="kUsers">0</div>
+    <div class="kpi-sub"><span class="kpi-trend up" id="kUsersTrend">+0</span> esta semana</div>
+    <div class="kpi-icon">👤</div>
+   </div>
+   <div class="kpi">
+    <div class="kpi-label">Usuarios Pro</div>
+    <div class="kpi-value" id="kPro" style="color:var(--pl)">0</div>
+    <div class="kpi-sub">Conversión: <strong id="kConvRate">0%</strong></div>
+    <div class="kpi-icon">⭐</div>
+   </div>
+   <div class="kpi">
+    <div class="kpi-label">MRR (mensual)</div>
+    <div class="kpi-value" id="kMRR" style="color:var(--ac)">$0</div>
+    <div class="kpi-sub">ARR: <strong id="kARR">$0</strong></div>
+    <div class="kpi-icon">💰</div>
+   </div>
+   <div class="kpi">
+    <div class="kpi-label">Problemas resueltos</div>
+    <div class="kpi-value" id="kSolves" style="color:var(--wr)">0</div>
+    <div class="kpi-sub"><span id="kSolvesAvg">0</span> por usuario</div>
+    <div class="kpi-icon">✅</div>
+   </div>
+   <div class="kpi">
+    <div class="kpi-label">Error rate</div>
+    <div class="kpi-value" id="kErrRate" style="color:var(--dn)">0%</div>
+    <div class="kpi-sub">Tiempo promedio: <strong id="kAvgTime">0ms</strong></div>
+    <div class="kpi-icon">⚡</div>
+   </div>
+  </div>
+
+  <div class="row2">
+   <!-- Module usage -->
+   <div class="section">
+    <h3>📊 Uso por <span>módulo</span></h3>
+    <div id="moduleBars"></div>
+   </div>
+
+   <!-- Revenue simulator -->
+   <div class="section">
+    <h3>🚀 Simulador de <span>escala</span></h3>
+    <div class="sim-grid">
+     <div class="sim-row"><span class="sim-label">Usuarios totales</span><input class="sim-input" id="simUsers" type="number" value="1000" oninput="simulate()"></div>
+     <div class="sim-row"><span class="sim-label">Conversión Pro (%)</span><input class="sim-input" id="simConv" type="number" value="5" oninput="simulate()"></div>
+     <div class="sim-row"><span class="sim-label">Precio ($/mes)</span><input class="sim-input" id="simPrice" type="number" value="19.99" step="0.01" oninput="simulate()"></div>
+     <div class="sim-row"><span class="sim-label">Churn mensual (%)</span><input class="sim-input" id="simChurn" type="number" value="5" oninput="simulate()"></div>
+    </div>
+    <div class="sim-result" id="simResults"></div>
+   </div>
+  </div>
+
+  <!-- Daily trends -->
+  <div class="section">
+   <h3>📈 Tendencia <span>últimos 30 días</span></h3>
+   <div id="trendsArea"></div>
+  </div>
+
+  <div class="row2">
+   <!-- Recent solves -->
+   <div class="section">
+    <h3>🔍 Solves <span>recientes</span></h3>
+    <div style="max-height:350px;overflow-y:auto">
+     <table>
+      <thead><tr><th>Hora</th><th>Email</th><th>Módulo</th><th>Estado</th><th>ms</th></tr></thead>
+      <tbody id="solvesTable"><tr><td colspan="5" style="text-align:center;color:var(--ts);padding:1rem">Sin datos</td></tr></tbody>
+     </table>
+    </div>
+   </div>
+
+   <!-- Users -->
+   <div class="section">
+    <h3>👥 Usuarios <span>recientes</span></h3>
+    <div style="max-height:350px;overflow-y:auto">
+     <table>
+      <thead><tr><th>Fecha</th><th>Nombre</th><th>Email</th><th>Plan</th></tr></thead>
+      <tbody id="usersTable"><tr><td colspan="4" style="text-align:center;color:var(--ts);padding:1rem">Sin datos</td></tr></tbody>
+     </table>
+    </div>
+   </div>
+  </div>
+
+  <!-- Costs -->
+  <div class="section">
+   <h3>💸 Costos <span>operativos</span></h3>
+   <div style="max-width:500px">
+    <div class="cost-row"><span class="sim-label">Claude Max (desarrollo)</span><span style="font-weight:600;color:var(--pl)">$100/mes</span></div>
+    <div class="cost-row"><span class="sim-label">Netlify (hosting)</span><span style="color:var(--ac);font-weight:600">$0/mes <small>(free tier)</small></span></div>
+    <div class="cost-row"><span class="sim-label">Dominio (invop.ai)</span><span style="font-weight:600">~$2.50/mes <small>($30/año)</small></span></div>
+    <div class="cost-row"><span class="sim-label">Google Cloud (OAuth)</span><span style="color:var(--ac);font-weight:600">$0/mes</span></div>
+    <div class="cost-row"><span class="sim-label">Stripe fees (2.9% + $0.30)</span><span style="font-weight:600" id="costStripe">$0/mes</span></div>
+    <div class="cost-row" style="border-top:2px solid var(--bd);padding-top:.6rem;margin-top:.3rem"><span style="font-weight:700">Costo total mensual</span><span style="font-weight:700;color:var(--wr);font-size:1rem" id="costTotal">~$102.50/mes</span></div>
+   </div>
+  </div>
+
+  <div class="footer">
+   <button class="refresh-btn" onclick="refreshDashboard()">🔄 Actualizar datos</button>
+   <span class="last-update" id="lastUpdate"></span>
+  </div>
+
+ </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const ADMIN_EMAIL='tmichelich@gmail.com';
+const GOOGLE_CLIENT_ID='759483082155-gf5uqdlf9kee6jo6dts46eu7lesdmcsu.apps.googleusercontent.com';
+const WEBHOOK_URL='https://script.google.com/macros/s/AKfycbz-fOubDIXELbGq5JEJTMNt9iprNuKcw3u4teP1wKZuekzReFq5lXt2nf1qmmSptkUE/exec';
+const PRICE=19.99;
+const MODULE_LABELS={LP:'Prog. Lineal',STOCK:'Inventarios',QUEUE:'Colas',INVEST:'Inversiones',FORECAST:'Pronósticos',RENTABILIDAD:'Rentabilidad',FLUJO_CAJA:'Flujo de Caja'};
+const MODULE_CSS={LP:'mod-lp',STOCK:'mod-stock',QUEUE:'mod-queue',INVEST:'mod-invest',FORECAST:'mod-forecast',RENTABILIDAD:'mod-rent',FLUJO_CAJA:'mod-fc'};
+
+let dashData=null;
+let gisInit=false;
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+function parseJwt(token){
+ try{const b=token.split('.')[1];const s=atob(b.replace(/-/g,'+').replace(/_/g,'/'));return JSON.parse(s);}
+ catch(e){return null;}
+}
+
+function checkAuth(){
+ try{
+  const u=JSON.parse(localStorage.getItem('invop_user'));
+  if(u&&u.email&&u.email.toLowerCase()===ADMIN_EMAIL){
+   showDashboard(u);
+   return true;
+  }
+ }catch(e){}
+ showAuthGate();
+ return false;
+}
+
+function showAuthGate(){
+ document.getElementById('authGate').style.display='flex';
+ document.getElementById('adminHeader').style.display='none';
+ document.getElementById('dashboard').style.display='none';
+ initGoogleSignIn();
+}
+
+function showDashboard(user){
+ document.getElementById('authGate').style.display='none';
+ document.getElementById('adminHeader').style.display='flex';
+ document.getElementById('dashboard').style.display='block';
+ document.getElementById('userEmail').textContent=user.email;
+ refreshDashboard();
+}
+
+function initGoogleSignIn(){
+ if(typeof google==='undefined'||!google.accounts)return setTimeout(initGoogleSignIn,300);
+ if(!gisInit){
+  google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleGoogleResponse,auto_select:false});
+  gisInit=true;
+ }
+ const btn=document.getElementById('googleSignInBtn');
+ if(btn){btn.innerHTML='';google.accounts.id.renderButton(btn,{type:'standard',theme:'filled_blue',size:'large',text:'signin_with',width:300});}
+}
+
+function handleGoogleResponse(response){
+ const payload=parseJwt(response.credential);
+ if(!payload||!payload.email){showError();return;}
+ if(payload.email.toLowerCase()!==ADMIN_EMAIL){showError();return;}
+ const user={name:payload.name||'Admin',email:payload.email,picture:payload.picture||'',pro:true};
+ localStorage.setItem('invop_user',JSON.stringify(user));
+ showDashboard(user);
+}
+
+function showError(){
+ const el=document.getElementById('authError');
+ if(el)el.style.display='block';
+}
+
+function logout(){
+ localStorage.removeItem('invop_user');
+ location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+async function fetchData(){
+ try{
+  const r=await fetch(WEBHOOK_URL+'?action=dashboard');
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return await r.json();
+ }catch(e){
+  console.error('Fetch error:',e);
+  return null;
+ }
+}
+
+async function refreshDashboard(){
+ document.getElementById('loadingState').style.display='block';
+ document.getElementById('dashContent').style.display='none';
+ dashData=await fetchData();
+ document.getElementById('loadingState').style.display='none';
+ document.getElementById('dashContent').style.display='block';
+ if(!dashData){
+  document.getElementById('lastUpdate').textContent='Error: no se pudieron cargar datos. Verificá el Apps Script.';
+  return;
+ }
+ renderKPIs();
+ renderModuleBars();
+ renderTrends();
+ renderSolves();
+ renderUsers();
+ renderCosts();
+ simulate();
+ document.getElementById('lastUpdate').textContent='Última actualización: '+new Date().toLocaleTimeString('es-AR');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+function renderKPIs(){
+ const s=dashData.summary||{};
+ const sv=dashData.solve_stats||{};
+ document.getElementById('kUsers').textContent=s.total_users||0;
+ document.getElementById('kUsersTrend').textContent='+'+(s.new_this_week||0);
+ document.getElementById('kPro').textContent=s.pro_users||0;
+ document.getElementById('kConvRate').textContent=(s.conversion_rate||0)+'%';
+ document.getElementById('kMRR').textContent='$'+(s.mrr||0).toFixed(2);
+ document.getElementById('kARR').textContent='ARR: $'+(s.arr||0).toFixed(2);
+ document.getElementById('kSolves').textContent=sv.total||0;
+ const avg=s.total_users>0?((sv.total||0)/s.total_users).toFixed(1):'0';
+ document.getElementById('kSolvesAvg').textContent=avg;
+ document.getElementById('kErrRate').textContent=(sv.error_rate||0)+'%';
+ document.getElementById('kAvgTime').textContent=(sv.avg_time_ms||0)+'ms';
+}
+
+function renderModuleBars(){
+ const mods=dashData.solves_by_module||{};
+ const total=Object.values(mods).reduce((a,b)=>a+b,0)||1;
+ const sorted=Object.entries(mods).sort((a,b)=>b[1]-a[1]);
+ let html='';
+ for(const[mod,count]of sorted){
+  const pct=Math.max(2,(count/total*100)).toFixed(1);
+  const label=MODULE_LABELS[mod]||mod;
+  const css=MODULE_CSS[mod]||'mod-lp';
+  html+=`<div class="bar-row"><div class="bar-label">${label}</div><div class="bar-track"><div class="bar-fill ${css}" style="width:${pct}%">${count}</div></div></div>`;
+ }
+ document.getElementById('moduleBars').innerHTML=html||'<p style="color:var(--ts);font-size:.82rem">Sin datos de solves todavía</p>';
+}
+
+function renderTrends(){
+ const trends=dashData.daily_trends||[];
+ if(!trends.length){document.getElementById('trendsArea').innerHTML='<p style="color:var(--ts);font-size:.82rem">Sin datos</p>';return;}
+ const maxS=Math.max(1,...trends.map(d=>d.solves));
+ let html='<div class="trends-grid">';
+ for(const day of trends){
+  const pct=Math.round(day.solves/maxS*100);
+  const bg=day.solves>0?`rgba(108,60,225,${0.15+pct/100*0.7})`:'var(--card2)';
+  const dateShort=day.date.substring(5);
+  html+=`<div class="trend-day" style="background:${bg}" title="${day.date}: ${day.solves} solves, ${day.new_users} nuevos"><div class="td-date">${dateShort}</div><div class="td-val">${day.solves}</div></div>`;
+ }
+ html+='</div>';
+ html+='<div style="display:flex;gap:1.5rem;margin-top:.6rem;font-size:.7rem;color:var(--ts)">';
+ const totalS=trends.reduce((a,d)=>a+d.solves,0);
+ const totalU=trends.reduce((a,d)=>a+d.new_users,0);
+ html+=`<span>Solves últimos 30d: <strong style="color:var(--tx)">${totalS}</strong></span>`;
+ html+=`<span>Nuevos usuarios 30d: <strong style="color:var(--tx)">${totalU}</strong></span>`;
+ html+='</div>';
+ document.getElementById('trendsArea').innerHTML=html;
+}
+
+function renderSolves(){
+ const solves=dashData.recent_solves||[];
+ if(!solves.length){document.getElementById('solvesTable').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--ts);padding:1rem">Sin solves registrados</td></tr>';return;}
+ let html='';
+ for(const s of solves){
+  const time=s.timestamp?new Date(s.timestamp).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  const email=(s.email||'guest').split('@')[0];
+  const mod=MODULE_LABELS[s.module]||s.module||'—';
+  const isOk=!s.status||s.status==='OK'||s.status==='ÓPTIMO';
+  const tag=isOk?'tag-ok':'tag-err';
+  html+=`<tr><td>${time}</td><td title="${s.email}">${email}</td><td>${mod}</td><td><span class="tag ${tag}">${s.status||'OK'}</span></td><td>${s.time_ms||'—'}</td></tr>`;
+ }
+ document.getElementById('solvesTable').innerHTML=html;
+}
+
+function renderUsers(){
+ const users=dashData.users||[];
+ if(!users.length){document.getElementById('usersTable').innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--ts);padding:1rem">Sin usuarios</td></tr>';return;}
+ let html='';
+ for(const u of users.slice(0,50)){
+  const date=u.registration_date?new Date(u.registration_date).toLocaleDateString('es-AR'):'—';
+  const isPro=(u.plan||'').toLowerCase()==='pro';
+  html+=`<tr><td>${date}</td><td>${u.name||'—'}</td><td>${u.email||'—'}</td><td><span class="tag ${isPro?'tag-pro':'tag-free'}">${isPro?'Pro':'Free'}</span></td></tr>`;
+ }
+ document.getElementById('usersTable').innerHTML=html;
+}
+
+function renderCosts(){
+ const pro=(dashData.summary||{}).pro_users||0;
+ const stripeFee=pro*(PRICE*0.029+0.30);
+ document.getElementById('costStripe').textContent='$'+stripeFee.toFixed(2)+'/mes';
+ const claude=100;const domain=2.50;
+ const total=(claude+domain+stripeFee).toFixed(2);
+ document.getElementById('costTotal').textContent='~$'+total+'/mes';
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIMULATOR
+// ═══════════════════════════════════════════════════════════
+function simulate(){
+ const users=+(document.getElementById('simUsers').value)||0;
+ const conv=(+(document.getElementById('simConv').value)||0)/100;
+ const price=+(document.getElementById('simPrice').value)||0;
+ const churn=(+(document.getElementById('simChurn').value)||0)/100;
+ const proU=Math.round(users*conv);
+ const mrr=proU*price;
+ const stripe=proU*(price*0.029+0.30);
+ const net=mrr-stripe;
+ const arr=net*12;
+ const ltv=churn>0?price/churn:price*24;
+ const cac=0; // no ad spend yet
+ document.getElementById('simResults').innerHTML=`
+  <div class="sim-result-row"><span class="sim-label">Usuarios Pro</span><strong>${proU}</strong></div>
+  <div class="sim-result-row"><span class="sim-label">MRR bruto</span><strong style="color:var(--ac)">$${mrr.toFixed(2)}</strong></div>
+  <div class="sim-result-row"><span class="sim-label">Stripe fees</span><strong style="color:var(--dn)">-$${stripe.toFixed(2)}</strong></div>
+  <div class="sim-result-row" style="border-top:2px solid var(--bd);padding-top:.5rem;margin-top:.3rem"><span style="font-weight:700">MRR neto</span><strong style="color:var(--ac);font-size:1.1rem">$${net.toFixed(2)}</strong></div>
+  <div class="sim-result-row"><span style="font-weight:700">ARR proyectado</span><strong style="color:var(--pl);font-size:1.1rem">$${arr.toFixed(2)}</strong></div>
+  <div class="sim-result-row"><span class="sim-label">LTV estimado</span><strong>$${ltv.toFixed(2)}</strong></div>
+ `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+ checkAuth();
+ simulate();
+});
+</script>
+</body>
+</html>
