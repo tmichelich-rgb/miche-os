@@ -1214,7 +1214,6 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
   </div>
  </div>
 </div>
-@keyframes spin{to{transform:rotate(360deg)}}
 
 <!-- CALCULADORA λ/μ MODAL -->
 <div class="modal-overlay" id="calcLambdaMuModal">
@@ -5273,8 +5272,8 @@ const INVOP_CONFIG={
  GOOGLE_CLIENT_ID:'759483082155-gf5uqdlf9kee6jo6dts46eu7lesdmcsu.apps.googleusercontent.com',
  STRIPE_LINK:'https://buy.stripe.com/cNi6oG1wa2s70RScvgc7u01',
  WEBHOOK_URL:'https://script.google.com/macros/s/AKfycbz-fOubDIXELbGq5JEJTMNt9iprNuKcw3u4teP1wKZuekzReFq5lXt2nf1qmmSptkUE/exec',
- // New platform API (cuando esté deployada en Vercel, reemplazar)
- API_BASE:'',  // e.g. 'https://invop.vercel.app' — empty = same origin
+ // Platform API
+ API_BASE:'https://miche-os.vercel.app',
  PLANS:{free:{name:'Free',limit:3},starter:{name:'Starter',price:3.99,limit:Infinity},pro:{name:'Pro',price:49.99,limit:Infinity,shopify:true,ai:true}}
 };
 
@@ -7747,6 +7746,148 @@ function loadAIModule(moduleName,inputsStr){
  // If already in app mode, update now
  if(document.body.classList.contains('app-mode')){updatePlanUI();}
 })();
+
+// F7: SHOPIFY EMBEDDED MODE DETECTION
+// When app is loaded inside Shopify admin (iframe), auto-detect and load store data
+(function(){
+ var isEmbedded=false;
+ try{isEmbedded=window!==window.top;}catch(e){isEmbedded=true;}
+
+ // Also check URL for Shopify params
+ var params=new URLSearchParams(window.location.search);
+ var shopParam=params.get('shop')||params.get('hmac')?true:false;
+ var hostParam=params.get('host');
+
+ // Detect shop domain from referrer or Shopify context
+ var shopDomain='';
+ if(params.get('shop')){
+  shopDomain=params.get('shop');
+ } else if(document.referrer&&document.referrer.includes('admin.shopify.com')){
+  var refMatch=document.referrer.match(/store\/([^\/]+)/);
+  if(refMatch)shopDomain=refMatch[1]+'.myshopify.com';
+ }
+
+ if((isEmbedded||shopParam)&&INVOP_CONFIG.API_BASE){
+  console.log('[INVOP] Shopify embedded mode detected. Shop:',shopDomain);
+
+  // Mark as embedded
+  window._shopifyEmbedded=true;
+  window._shopifyDomain=shopDomain;
+
+  // Force show Shopify panel regardless of plan (they installed the app!)
+  var _origUpdatePlan=updatePlanUI;
+  updatePlanUI=function(){
+   _origUpdatePlan();
+   if(window._shopifyEmbedded){
+    var shopSec=document.getElementById('shopifySection');
+    if(shopSec)shopSec.style.display='block';
+    var badge=document.getElementById('planBadge');
+    if(badge){badge.className='plan-badge pro';badge.textContent='SHOPIFY';}
+   }
+  };
+
+  // Auto-load store data when entering app
+  var _origEnterApp2=enterApp;
+  enterApp=function(){
+   _origEnterApp2();
+   if(window._shopifyDomain){
+    loadShopifyStoreData(window._shopifyDomain);
+   }
+  };
+
+  // If already in app mode, load now
+  if(document.body.classList.contains('app-mode')&&shopDomain){
+   loadShopifyStoreData(shopDomain);
+  }
+ }
+})();
+
+function loadShopifyStoreData(shop){
+ if(!INVOP_CONFIG.API_BASE||!shop)return;
+ console.log('[INVOP] Loading store data for:',shop);
+
+ fetch(INVOP_CONFIG.API_BASE+'/api/shopify/store-data?shop='+encodeURIComponent(shop))
+ .then(function(r){return r.json();})
+ .then(function(data){
+  if(data.connected&&data.store){
+   // Store locally
+   setShopifyStore({
+    shop_domain:data.store.shop_domain,
+    store_id:data.store.id,
+    product_count:data.store.products_count||data.products.length,
+    order_count:data.store.orders_count||data.orders.length,
+    last_sync:data.store.last_sync
+   });
+   showConnectedStore(getShopifyStore());
+
+   // Store products for AI usage
+   window._shopifyProducts=data.products||[];
+   window._shopifyOrders=data.orders||[];
+
+   console.log('[INVOP] Store data loaded:',data.products.length,'products,',data.orders.length,'orders');
+
+   // Show inline insight if products available
+   if(data.products.length>0){
+    showShopifyProductsInsight(data.products);
+   }
+  } else if(data.needs_sync){
+   // Store exists in Shopify but no data synced yet — trigger sync
+   console.log('[INVOP] Store not synced yet, needs initial sync');
+   var nc=document.getElementById('shopifyNotConnected');
+   if(nc){
+    nc.innerHTML='<h4>🔄 Sincronizando datos...</h4><p style="font-size:.72rem;color:var(--ts)">Primera vez — estamos cargando tus productos y órdenes.</p>';
+   }
+  }
+ })
+ .catch(function(err){
+  console.log('[INVOP] Store data fetch error:',err);
+ });
+}
+
+function showShopifyProductsInsight(products){
+ var container=document.getElementById('aiInsightsContainer');
+ if(!container)return;
+ var total=products.length;
+ var withCost=products.filter(function(p){return p.cost_per_item&&p.price;}).length;
+ var outOfStock=products.filter(function(p){return p.inventory_quantity<=0;}).length;
+
+ var html='<div class="ai-insight-card" style="border-color:var(--ac)">';
+ html+='<h5>🛍️ Tu tienda</h5>';
+ html+='<p>'+total+' productos cargados';
+ if(outOfStock>0)html+=' · <span style="color:var(--dn)">'+outOfStock+' sin stock</span>';
+ if(withCost>0)html+=' · '+withCost+' con costo registrado';
+ html+='</p>';
+ html+='<button class="shopify-connect-btn" style="margin-top:.5rem;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.4rem" onclick="autoAnalyzeShopify()">Analizar con AI</button>';
+ html+='</div>';
+ container.innerHTML=html;
+}
+
+function autoAnalyzeShopify(){
+ if(!window._shopifyProducts||!window._shopifyProducts.length){
+  alert('No hay productos cargados todavía.');
+  return;
+ }
+ // Build a summary and feed it to the chat
+ var products=window._shopifyProducts;
+ var summary=products.slice(0,20).map(function(p){
+  var line=p.title;
+  if(p.price)line+=' — $'+p.price;
+  if(p.cost_per_item)line+=' (costo: $'+p.cost_per_item+')';
+  if(p.inventory_quantity!==undefined)line+=' [stock: '+p.inventory_quantity+']';
+  return line;
+ }).join('\\n');
+
+ var msg='Tengo estos productos en mi tienda Shopify:\\n'+summary;
+ if(products.length>20)msg+='\\n... y '+(products.length-20)+' más.';
+ msg+='\\n\\nAnalizá mi rentabilidad y decime qué productos convienen más.';
+
+ // Enter RENTABILIDAD module and send
+ selMod('RENTABILIDAD');
+ setTimeout(function(){
+  var textarea=document.querySelector('.iarea textarea');
+  if(textarea){textarea.value=msg;send();}
+ },300);
+}
 
 console.log('[INVOP AI] Bloque F loaded — Shopify + AI + Plans integration active.');
 </script>
