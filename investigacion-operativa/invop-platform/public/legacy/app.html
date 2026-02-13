@@ -7601,7 +7601,8 @@ function startShopifyOAuth(){
  }
  // If API_BASE is configured, use OAuth flow
  if(INVOP_CONFIG.API_BASE){
-  var url=INVOP_CONFIG.API_BASE+'/api/shopify/auth?shop='+encodeURIComponent(shop+'.myshopify.com');
+  var userEmail=(window._invopUser&&window._invopUser.email)||localStorage.getItem('invop_email')||'tmichelich@gmail.com';
+  var url=INVOP_CONFIG.API_BASE+'/api/shopify/auth?shop='+encodeURIComponent(shop+'.myshopify.com')+'&email='+encodeURIComponent(userEmail);
   window.location.href=url;
  } else {
   // Demo/fallback — simulate connection

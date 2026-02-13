@@ -115,15 +115,16 @@ export async function registerWebhooks(config: ShopifyConfig, callbackBase: stri
 }
 
 // ═══ OAuth Helpers ═══
-export function buildShopifyAuthUrl(shop: string): string {
+export function buildShopifyAuthUrl(shop: string, email?: string): string {
   const apiKey = process.env.SHOPIFY_API_KEY!;
   const scopes = process.env.SHOPIFY_SCOPES!;
   const redirectUri = `${process.env.NEXT_PUBLIC_SHOPIFY_APP_URL}/api/shopify/callback`;
 
-  // Generate nonce for CSRF protection
+  // Generate nonce for CSRF protection, encode email in state
   const nonce = crypto.randomUUID();
+  const statePayload = email ? `${nonce}:${Buffer.from(email).toString('base64')}` : nonce;
 
-  return `https://${shop}/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${nonce}`;
+  return `https://${shop}/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(statePayload)}`;
 }
 
 export async function exchangeCodeForToken(shop: string, code: string): Promise<string> {

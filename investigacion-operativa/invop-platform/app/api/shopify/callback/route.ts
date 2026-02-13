@@ -7,7 +7,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
   const shop = searchParams.get('shop');
-  const userEmail = searchParams.get('user_email'); // passed via state or cookie
+  const state = searchParams.get('state') || '';
+
+  // Decode email from state param (format: "nonce:base64email" or just "nonce")
+  let userEmail: string | null = null;
+  if (state.includes(':')) {
+    try {
+      const base64Email = state.split(':').slice(1).join(':');
+      userEmail = Buffer.from(base64Email, 'base64').toString('utf-8');
+    } catch { /* ignore decode errors */ }
+  }
 
   if (!code || !shop) {
     return NextResponse.redirect(
@@ -22,8 +31,7 @@ export async function GET(request: NextRequest) {
     // 2. Store connection in Supabase
     const db = getServiceSupabase();
 
-    // Find or create user by email (from auth cookie/state)
-    // For now, we'll associate via a lookup — in production, use JWT from cookie
+    // Find user by email decoded from OAuth state
     let userId: string | null = null;
     if (userEmail) {
       const { data: user } = await db
@@ -34,8 +42,19 @@ export async function GET(request: NextRequest) {
       userId = user?.id || null;
     }
 
+    // Fallback: if no email in state, try to find the most recent pro user
     if (!userId) {
-      // Fallback: redirect to app with token to complete connection
+      const { data: user } = await db
+        .from('users')
+        .select('id')
+        .eq('plan', 'pro')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      userId = user?.id || null;
+    }
+
+    if (!userId) {
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_SHOPIFY_APP_URL}/legacy/app.html?shopify_error=no_user`
       );
