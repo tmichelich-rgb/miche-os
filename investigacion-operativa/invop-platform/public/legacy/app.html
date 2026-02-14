@@ -4701,8 +4701,19 @@ const SENS_DEFS={
   {key:'window',label:'Períodos promedio móvil (n)',unit:'',abs:4,step:1,fmt:v=>Math.round(v)+' períodos'},
   {key:'alpha',label:'Alpha (α) suavización',unit:'',abs:0.15,step:0.05,fmt:v=>v.toFixed(2)}
  ],
- RENTABILIDAD:[],
- FLUJO_CAJA:[]
+ RENTABILIDAD:[
+  {key:'_price_pct',label:'Variación precios (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'price'},
+  {key:'_cost_pct',label:'Variación costos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'unit_cost'},
+  {key:'_qty_pct',label:'Variación volumen (%)',unit:'%',abs:50,step:5,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'quantity'},
+  {key:'fixed_costs',label:'Costos fijos',unit:'$',pct:50}
+ ],
+ FLUJO_CAJA:[
+  {key:'opening_balance',label:'Saldo inicial',unit:'$',pct:50},
+  {key:'_inflows_pct',label:'Variación ingresos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'inflows',scaleField:'amount'},
+  {key:'_outflows_pct',label:'Variación egresos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'outflows',scaleField:'amount'},
+  {key:'dso',label:'DSO — plazo cobro',unit:'días',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'},
+  {key:'dpo',label:'DPO — plazo pago',unit:'días',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'}
+ ]
 };
 
 function sensGetMetrics(mod,res){
@@ -4712,6 +4723,7 @@ function sensGetMetrics(mod,res){
  if(mod==='LP'){return[{k:'Z',l:'Z óptimo',v:'$'+res.objective_value.toLocaleString('es-AR',{minimumFractionDigits:2}),u:''}];}
  if(mod==='FORECAST'){const r=res.results||{},e=r.errors||{};if(res.method==='ALL'&&r.all_methods){const sma=r.all_methods.find(m=>m.method==='SMA'),ses=r.all_methods.find(m=>m.method==='SES'),reg=r.all_methods.find(m=>m.method==='REG');return[{k:'f_sma',l:'SMA',v:sma?sma.result.results.forecast[0]:'—',u:''},{k:'f_ses',l:'SES',v:ses?ses.result.results.forecast[0]:'—',u:''},{k:'f_reg',l:'Regresión',v:reg?reg.result.results.forecast[0]:'—',u:''},{k:'best',l:'Mejor',v:res.best_method||'—',u:''}];}return[{k:'forecast',l:'Pronóstico',v:r.forecast?r.forecast[0]:'—',u:'un'},{k:'MAD',l:'MAD',v:e.mad||'—',u:''},{k:'MAPE',l:'MAPE',v:(e.mape||'—')+'%',u:''}];}
  if(mod==='RENTABILIDAD'){const r=res.results||{};return[{k:'profit',l:'Ganancia neta',v:'$'+r0(r.net_profit||0).toLocaleString('es-AR'),u:''},{k:'margin',l:'Margen neto',v:(r.net_margin_pct||0)+'%',u:''},{k:'be',l:'Equilibrio',v:(r.global_break_even_units||'—')+' un',u:''}];}
+ if(mod==='FLUJO_CAJA'){const r=res.results||{};return[{k:'final',l:'Saldo final',v:'$'+r0(r.final_balance||0).toLocaleString('es-AR'),u:''},{k:'net',l:'Flujo neto/mes',v:'$'+r0(r.net_monthly||0).toLocaleString('es-AR'),u:''},{k:'neg',l:'Meses en rojo',v:''+(r.neg_months||0),u:''}];}
  return[];
 }
 
@@ -4729,8 +4741,9 @@ function buildSensSliders(mod,params,res){
  // Filter out params that don't exist or are 0
  defs=defs.filter(d=>{
   if(d.rhsIdx!==undefined)return true;
+  if(d.isScale){const arr=params[d.scaleArr];return arr&&arr.length>0;}
   if(d.altKey){const alts=params.alternatives;return alts&&alts.length>0&&alts[0][d.key]!=null;}
-  return params[d.key]!=null&&params[d.key]>0;
+  return params[d.key]!=null;
  });
  if(defs.length===0)return '';
  // Build metrics display
@@ -4742,12 +4755,14 @@ function buildSensSliders(mod,params,res){
  let shtml='';
  defs.forEach(d=>{
   let baseVal;
-  if(d.rhsIdx!==undefined)baseVal=d.baseVal;
+  if(d.isScale)baseVal=0;
+  else if(d.rhsIdx!==undefined)baseVal=d.baseVal;
   else if(d.altKey)baseVal=params.alternatives[0][d.key]||0;
-  else baseVal=params[d.key];
+  else baseVal=params[d.key]||0;
   let min,max,step,dispVal;
-  if(d.abs!==undefined){min=Math.max(0.001,baseVal-d.abs);max=baseVal+d.abs;step=d.step||0.001;dispVal=d.fmt?d.fmt(baseVal):r2(baseVal);}
-  else{min=Math.max(0.01,baseVal*(1-d.pct/100));max=baseVal*(1+d.pct/100);step=Math.max(0.01,baseVal*0.02);dispVal=d.unit==='$'?'$'+r0(baseVal).toLocaleString('es-AR'):r2(baseVal);}
+  if(d.isScale){min=-d.abs;max=d.abs;step=d.step||1;dispVal=d.fmt?d.fmt(0):'0%';}
+  else if(d.abs!==undefined){min=Math.max(0.001,baseVal-d.abs);max=baseVal+d.abs;step=d.step||0.001;dispVal=d.fmt?d.fmt(baseVal):r2(baseVal);}
+  else{const bv=Math.abs(baseVal)||1;min=baseVal-bv*(d.pct/100);max=baseVal+bv*(d.pct/100);step=Math.max(0.01,bv*0.02);dispVal=d.unit==='$'?'$'+r0(baseVal).toLocaleString('es-AR'):r2(baseVal);}
   shtml+=`<div class="sens-row"><div class="sens-label"><span class="sens-param-name">${d.label}</span><span class="sens-value" id="sensV-${d.key}">${dispVal} ${d.unit||''}</span></div>`;
   shtml+=`<input type="range" class="sens-slider" id="sensS-${d.key}" data-key="${d.key}" data-base="${baseVal}" min="${min}" max="${max}" step="${step}" value="${baseVal}"></div>`;
  });
@@ -4781,13 +4796,19 @@ function onSensChange(key,val,baseVal){
  if(!S._originalParams){console.warn('[SENS] No _originalParams');return;}
  // Build temp params
  let tmpP=JSON.parse(JSON.stringify(S._originalParams));
- if(mod==='LP'&&key.startsWith('_rhs_')){
+ const _sDef=[...SENS_DEFS[mod]||[]].find(d=>d.key===key);
+ if(_sDef&&_sDef.isScale){
+  // isScale: val is % change (e.g. +10 means +10%), base=0
+  const factor=1+val/100;
+  const origArr=JSON.parse(JSON.stringify(S._originalParams[_sDef.scaleArr]||[]));
+  tmpP[_sDef.scaleArr]=origArr.map(item=>{const c=Object.assign({},item);c[_sDef.scaleField]=r2(+(item[_sDef.scaleField]||0)*factor);if(_sDef.scaleField==='quantity')c[_sDef.scaleField]=Math.max(1,Math.round(c[_sDef.scaleField]));return c;});
+ }else if(mod==='LP'&&key.startsWith('_rhs_')){
   const idx=parseInt(key.replace('_rhs_',''));
   if(tmpP.constraints&&tmpP.constraints[idx])tmpP.constraints[idx].rhs=val;
  }else if(mod==='INVEST'&&SENS_DEFS.INVEST.find(d=>d.key===key)){
   if(tmpP.alternatives)tmpP.alternatives.forEach(alt=>{alt[key]=val;});
  }else{
-  tmpP[key]=(key==='window'?Math.max(2,Math.round(val)):val);
+  tmpP[key]=(key==='window'?Math.max(2,Math.round(val)):key==='dso'||key==='dpo'?Math.max(0,Math.round(val)):val);
  }
  // Re-solve
  let newRes;
@@ -4812,6 +4833,8 @@ function onSensChange(key,val,baseVal){
   else if(mod==='INVEST')newRes=INVEST.solve(tmpP);
   else if(mod==='LP')newRes=LP.solve(tmpP);
   else if(mod==='FORECAST')newRes=FORECAST.solve(tmpP);
+  else if(mod==='RENTABILIDAD')newRes=RENTABILIDAD.solve(tmpP);
+  else if(mod==='FLUJO_CAJA')newRes=FLUJO_CAJA.solve(tmpP);
  }catch(e){console.error('[SENS] Solver error:',e);return;}
  if(!newRes||newRes.status==='ERROR'||newRes.status==='INFACTIBLE'||newRes.status==='INESTABLE'){console.warn('[SENS] Solver failed:',newRes?.status,newRes?.message);return;}
  console.log('[SENS] Re-solved OK, new result:',mod,newRes.status);
@@ -4888,6 +4911,44 @@ function sensUpdateChart(mod,res,params){
    Object.keys(vars).forEach(v=>{profits.push((res.objective_coefficients[v]||0)*vars[v]);});
    ch.data.datasets[1].data=profits;
   }
+  ch.update('none');
+ }else if(mod==='FORECAST'){
+  const ch=chartInstances['forecast-main'];
+  if(!ch)return;
+  const r=res.results||{};
+  const data=params.timeseries||[];
+  const fitted=r.fitted||[];
+  const forecast=r.forecast||[];
+  const n=data.length;
+  const actualData=[...data,...new Array(forecast.length).fill(null)];
+  const fittedData=[...fitted,...new Array(forecast.length).fill(null)];
+  const forecastData=new Array(n).fill(null);
+  if(n>0)forecastData[n-1]=data[n-1];
+  forecastData.push(...forecast);
+  ch.data.datasets[0].data=actualData;
+  ch.data.datasets[1].data=fittedData;
+  ch.data.datasets[2].data=forecastData;
+  ch.update('none');
+ }else if(mod==='RENTABILIDAD'){
+  const ch=chartInstances['rent-main'];
+  if(!ch)return;
+  const prods=(res.results||{}).products||[];
+  if(prods.length===0)return;
+  ch.data.labels=prods.map(p=>p.name);
+  ch.data.datasets[0].data=prods.map(p=>p.revenue);
+  ch.data.datasets[1].data=prods.map(p=>p.variable_cost);
+  ch.data.datasets[2].data=prods.map(p=>p.contribution);
+  ch.update('none');
+ }else if(mod==='FLUJO_CAJA'){
+  const ch=chartInstances['fc-main'];
+  if(!ch)return;
+  const tl=(res.results||{}).timeline||[];
+  if(tl.length===0)return;
+  ch.data.labels=tl.map(t=>'Mes '+t.month);
+  ch.data.datasets[0].data=tl.map(t=>t.closing);
+  ch.data.datasets[0].pointBackgroundColor=tl.map(t=>t.closing>=0?'#06D6A0':'#EF476F');
+  ch.data.datasets[0].pointBorderColor=tl.map(t=>t.closing>=0?'#06D6A0':'#EF476F');
+  if(ch.data.datasets[1])ch.data.datasets[1].data=Array(tl.length).fill(0);
   ch.update('none');
  }
 }
