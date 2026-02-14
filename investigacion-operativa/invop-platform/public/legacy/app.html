@@ -7614,8 +7614,9 @@ function startShopifyOAuth(){
  }
 }
 
-// F4: AI ANALYSIS
-function runAIAnalysis(){
+// F4: AI ANALYSIS — redirect to smart analyzer
+function runAIAnalysis(){ autoAnalyzeShopify(); }
+function _legacyRunAIAnalysis(){
  var store=getShopifyStore();
  var u=getUser();
  if(!store||!u)return;
@@ -7905,54 +7906,117 @@ function renderSmartAnalysis(analysis){
  // General insights
  html+='<div class="ai-insight-card" style="border-color:var(--ac)"><h5>📊 Tu tienda Shopify</h5><p>'+analysis.general_insights+'</p></div>';
 
- // Missing data — show cost form
+ // ── COST INPUT FORM ──────────────────────────────────
  if(analysis.missing_data&&analysis.missing_data.length>0){
-  html+='<div class="ai-insight-card" style="border-color:#f59e0b"><h5>⚡ Datos que necesitamos</h5>';
-  html+='<p style="font-size:.75rem;color:var(--ts);margin-bottom:.5rem">Completá estos campos para desbloquear todos los módulos:</p>';
-  html+='<div style="display:flex;flex-direction:column;gap:.4rem">';
+  html+='<div class="ai-insight-card" style="border-color:#f59e0b;background:rgba(245,158,11,0.05)">';
+  html+='<h5>⚡ Completá estos datos para mejores resultados</h5>';
+  html+='<div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem">';
+
+  // Single value fields
   for(var i=0;i<analysis.missing_data.length;i++){
    var md=analysis.missing_data[i];
    if(md.input_type==='single_value'){
-    html+='<div style="display:flex;align-items:center;gap:.5rem">';
-    html+='<label style="font-size:.72rem;color:var(--ts);min-width:180px">'+md.description+'</label>';
-    html+='<input type="number" id="cost_'+md.field+'" placeholder="0" style="flex:1;padding:.3rem .5rem;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.75rem;max-width:100px">';
+    html+='<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">';
+    html+='<label style="font-size:.73rem;color:var(--ts);min-width:200px;flex:1">'+md.description+'</label>';
+    html+='<input type="number" id="cost_'+md.field+'" placeholder="$0" style="width:90px;padding:.35rem .5rem;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.75rem">';
     html+='</div>';
    }
   }
+
   // Per-product costs
   var needsProductCost=analysis.missing_data.some(function(m){return m.field==='cost_per_item';});
   if(needsProductCost&&analysis.product_summary){
-   html+='<details style="margin-top:.3rem"><summary style="font-size:.72rem;color:var(--ac);cursor:pointer">Costos por producto (opcional)</summary>';
+   html+='<div style="margin-top:.4rem;border-top:1px solid var(--bd);padding-top:.5rem">';
+   html+='<p style="font-size:.73rem;color:var(--ts);margin-bottom:.3rem">Costo unitario por producto:</p>';
+
+   // Excel upload
+   html+='<div style="display:flex;gap:.5rem;margin-bottom:.4rem;align-items:center">';
+   html+='<label style="cursor:pointer;font-size:.7rem;padding:.3rem .7rem;border-radius:6px;background:var(--card);border:1px dashed var(--ac);color:var(--ac);display:inline-flex;align-items:center;gap:.3rem" onclick="document.getElementById(\'costExcelUpload\').click()">📎 Subir Excel con costos</label>';
+   html+='<input type="file" id="costExcelUpload" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleCostExcelUpload(this)">';
+   html+='<span id="excelUploadStatus" style="font-size:.65rem;color:var(--ts)"></span>';
+   html+='</div>';
+
+   // Manual per-product inputs
+   html+='<details><summary style="font-size:.72rem;color:var(--ac);cursor:pointer">O cargar manualmente</summary>';
    html+='<div style="max-height:200px;overflow-y:auto;margin-top:.3rem">';
    for(var j=0;j<Math.min(analysis.product_summary.length,15);j++){
     var p=analysis.product_summary[j];
-    html+='<div style="display:flex;align-items:center;gap:.4rem;padding:.2rem 0;border-bottom:1px solid var(--bd)">';
-    html+='<span style="font-size:.7rem;color:var(--ts);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.title+' ($'+p.price+')</span>';
-    html+='<input type="number" id="pcost_'+p.shopify_id+'" placeholder="costo" style="width:70px;padding:.2rem .4rem;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.7rem">';
+    html+='<div style="display:flex;align-items:center;gap:.4rem;padding:.25rem 0;border-bottom:1px solid var(--bd)">';
+    html+='<span style="font-size:.7rem;color:var(--ts);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.title+'">'+p.title+' <span style="color:var(--ac)">$'+p.price+'</span></span>';
+    html+='<input type="number" id="pcost_'+p.shopify_id+'" placeholder="costo" style="width:75px;padding:.25rem .4rem;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.7rem">';
     html+='</div>';
    }
    html+='</div></details>';
+   html+='</div>';
   }
-  html+='<button class="shopify-connect-btn" style="margin-top:.5rem;background:linear-gradient(135deg,#f59e0b,#f97316);font-size:.72rem;padding:.4rem" onclick="saveCostsAndReanalyze()">Guardar costos y re-analizar</button>';
+
+  html+='<button class="shopify-connect-btn" style="margin-top:.5rem;background:linear-gradient(135deg,#f59e0b,#f97316);font-size:.75rem;padding:.45rem .8rem" onclick="saveCostsAndReanalyze()">Guardar costos y re-analizar</button>';
   html+='</div></div>';
  }
 
- // Module cards
+ // ── MODULE CARDS WITH CHECKLIST ──────────────────────
  if(analysis.modules){
   var icons={STOCK:'📦',FORECAST:'📈',RENTABILIDAD:'💰',FLUJO_CAJA:'💵'};
+  var dataLabels={
+   RENTABILIDAD:{has:['Productos','Precios de venta'],optional:['Costos unitarios','Costos fijos','Volumen de ventas']},
+   STOCK:{has:['Productos','Niveles de inventario'],optional:['Demanda (ventas)','Costo por pedido','Costo de almacenamiento']},
+   FORECAST:{has:[],optional:['Historial de ventas (min 3 meses)']},
+   FLUJO_CAJA:{has:['Productos'],optional:['Ingresos mensuales','Costos fijos','Balance inicial']}
+  };
+
   for(var k=0;k<analysis.modules.length;k++){
    var mod=analysis.modules[k];
-   var tagClass=mod.priority==='high'?'high':mod.priority==='medium'?'medium':'low';
-   var borderColor=mod.priority==='high'?'var(--ac)':mod.priority==='medium'?'#f59e0b':'var(--bd)';
+   var isComplete=mod.needs.length===0;
+   var borderColor=isComplete?'var(--ac)':'var(--bd)';
+
    html+='<div class="ai-insight-card" style="border-color:'+borderColor+'">';
-   html+='<div style="display:flex;justify-content:space-between;align-items:center"><h5>'+(icons[mod.module]||'🔧')+' '+mod.module+'</h5>';
-   html+='<span class="insight-tag '+tagClass+'">'+mod.priority+'</span></div>';
-   html+='<p>'+mod.insights+'</p>';
-   if(mod.inputs&&mod.needs.length===0){
-    html+='<button class="shopify-connect-btn" style="margin-top:.4rem;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.35rem .8rem" onclick="closeModal(\'aiAnalysisModal\');loadAIModule(\''+mod.module+'\','+JSON.stringify(JSON.stringify(mod.inputs))+')">Resolver ahora</button>';
-   } else if(mod.needs.length>0){
-    html+='<p style="font-size:.68rem;color:#f59e0b;margin-top:.3rem">Falta: '+mod.needs.join(', ')+'</p>';
+   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">';
+   html+='<h5 style="margin:0">'+(icons[mod.module]||'🔧')+' '+mod.module+'</h5>';
+   var tagClass=mod.priority==='high'?'high':mod.priority==='medium'?'medium':'low';
+   html+='<span class="insight-tag '+tagClass+'">'+mod.priority+'</span>';
+   html+='</div>';
+
+   // Checklist
+   var labels=dataLabels[mod.module]||{has:[],optional:[]};
+   html+='<div style="margin:.3rem 0;font-size:.7rem">';
+   // Items we have
+   for(var h=0;h<labels.has.length;h++){
+    html+='<div style="color:#22c55e;padding:.1rem 0">✓ '+labels.has[h]+'</div>';
    }
+   // Items that are needed/missing
+   for(var n=0;n<mod.needs.length;n++){
+    var needLabel=mod.needs[n].replace(/_/g,' ').replace('cost per item','Costos unitarios').replace('ordering cost','Costo por pedido').replace('holding cost pct','Costo de almacenamiento').replace('fixed costs','Costos fijos').replace('demand data','Datos de ventas').replace('sales history','Historial de ventas');
+    html+='<div style="color:#ef4444;padding:.1rem 0">✗ '+needLabel+'</div>';
+   }
+   // Optional items we DO have (from labels.optional minus needs)
+   var needFields=mod.needs||[];
+   for(var o=0;o<labels.optional.length;o++){
+    var isNeeded=false;
+    for(var nn=0;nn<needFields.length;nn++){
+     if(labels.optional[o].toLowerCase().indexOf(needFields[nn].replace(/_/g,' '))>=0)isNeeded=true;
+    }
+    if(!isNeeded){
+     html+='<div style="color:#22c55e;padding:.1rem 0">✓ '+labels.optional[o]+'</div>';
+    }
+   }
+   html+='</div>';
+
+   html+='<p style="font-size:.73rem;color:var(--ts);margin:.3rem 0">'+mod.insights+'</p>';
+
+   // Button: green if complete, amber/red if incomplete
+   if(mod.inputs){
+    if(isComplete){
+     html+='<button class="shopify-connect-btn" style="margin-top:.4rem;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.35rem .8rem" onclick="closeModal(\'aiAnalysisModal\');loadAIModule(\''+mod.module+'\','+JSON.stringify(JSON.stringify(mod.inputs))+')">✓ Resolver con datos completos</button>';
+    } else {
+     html+='<div style="margin-top:.4rem">';
+     html+='<button class="shopify-connect-btn" style="background:linear-gradient(135deg,#dc2626,#f97316);font-size:.72rem;padding:.35rem .8rem;opacity:.9" onclick="if(confirm(\'Faltan datos. El resultado será aproximado, no óptimo. ¿Continuar?\')){closeModal(\'aiAnalysisModal\');loadAIModule(\''+mod.module+'\','+JSON.stringify(JSON.stringify(mod.inputs))+');}">⚠ Resolver (resultado aproximado)</button>';
+     html+='<p style="font-size:.62rem;color:#f59e0b;margin-top:.2rem">Completá los datos faltantes arriba para un resultado óptimo</p>';
+     html+='</div>';
+    }
+   } else {
+    html+='<p style="font-size:.68rem;color:#ef4444;margin-top:.3rem">✗ Faltan datos esenciales para este módulo</p>';
+   }
+
    html+='</div>';
   }
  }
@@ -7969,6 +8033,109 @@ function renderSmartAnalysis(analysis){
  html+='<button class="shopify-connect-btn" style="margin-top:.8rem;background:var(--card);border:1px solid var(--bd);color:var(--tx)" onclick="closeModal(\'aiAnalysisModal\')">Cerrar</button>';
  el.innerHTML=html;
  renderSidebarInsights(analysis);
+}
+
+// Excel upload handler for costs
+function handleCostExcelUpload(input){
+ var file=input.files[0];
+ if(!file)return;
+ var status=document.getElementById('excelUploadStatus');
+ if(status)status.textContent='Leyendo '+file.name+'...';
+
+ var reader=new FileReader();
+ reader.onload=function(e){
+  try{
+   var data=e.target.result;
+   var rows=[];
+
+   if(file.name.endsWith('.csv')||file.name.endsWith('.tsv')){
+    // Parse CSV
+    var text=new TextDecoder().decode(data);
+    var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+    for(var i=0;i<lines.length;i++){
+     var cols=lines[i].split(/[,;\t]/);
+     rows.push(cols.map(function(c){return c.trim().replace(/^"|"$/g,'');}));
+    }
+   } else {
+    // For xlsx we need SheetJS — try loading it
+    if(typeof XLSX==='undefined'){
+     var script=document.createElement('script');
+     script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+     script.onload=function(){parseExcelData(data,status);};
+     document.head.appendChild(script);
+     return;
+    }
+    parseExcelData(data,status);
+    return;
+   }
+
+   matchCostRows(rows,status);
+  }catch(err){
+   if(status)status.textContent='Error: '+err.message;
+  }
+ };
+ reader.readAsArrayBuffer(file);
+}
+
+function parseExcelData(data,status){
+ try{
+  var wb=XLSX.read(data,{type:'array'});
+  var ws=wb.Sheets[wb.SheetNames[0]];
+  var rows=XLSX.utils.sheet_to_json(ws,{header:1});
+  matchCostRows(rows,status);
+ }catch(err){
+  if(status)status.textContent='Error leyendo Excel: '+err.message;
+ }
+}
+
+function matchCostRows(rows,status){
+ if(!rows||rows.length<2){
+  if(status)status.textContent='El archivo está vacío o no tiene datos.';
+  return;
+ }
+
+ // Try to find name/product column and cost column
+ var header=rows[0].map(function(h){return(h||'').toString().toLowerCase();});
+ var nameCol=-1,costCol=-1;
+
+ for(var c=0;c<header.length;c++){
+  if(/product|nombre|titulo|title|sku|item/i.test(header[c]))nameCol=c;
+  if(/cost|costo|precio.?compra|unit.?cost|costo.?unit/i.test(header[c]))costCol=c;
+ }
+
+ // Fallback: assume col 0 = name, col 1 = cost
+ if(nameCol===-1)nameCol=0;
+ if(costCol===-1)costCol=1;
+
+ var matched=0;
+ var products=window._lastAnalysis&&window._lastAnalysis.product_summary?window._lastAnalysis.product_summary:[];
+
+ for(var r=1;r<rows.length;r++){
+  var rowName=(rows[r][nameCol]||'').toString().toLowerCase().trim();
+  var rowCost=parseFloat(rows[r][costCol]);
+  if(!rowName||isNaN(rowCost)||rowCost<=0)continue;
+
+  // Try to match with a product
+  for(var p=0;p<products.length;p++){
+   var prodTitle=products[p].title.toLowerCase();
+   if(prodTitle.indexOf(rowName)>=0||rowName.indexOf(prodTitle)>=0||
+      (rowName.length>3&&prodTitle.indexOf(rowName.substring(0,Math.min(rowName.length,15)))>=0)){
+    var inp=document.getElementById('pcost_'+products[p].shopify_id);
+    if(inp){inp.value=rowCost;matched++;}
+    break;
+   }
+  }
+ }
+
+ if(status){
+  if(matched>0){
+   status.textContent='✓ '+matched+' producto(s) matcheados de '+(rows.length-1)+' filas.';
+   status.style.color='#22c55e';
+  } else {
+   status.textContent='No se pudo matchear automáticamente. Formato esperado: columna "Producto" y columna "Costo".';
+   status.style.color='#f59e0b';
+  }
+ }
 }
 
 function saveCostsAndReanalyze(){
