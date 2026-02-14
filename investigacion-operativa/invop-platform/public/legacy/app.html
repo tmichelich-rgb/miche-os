@@ -2197,6 +2197,83 @@ const FLUJO_CAJA={
 
 function r0(v){return Math.round(v);}
 
+// ═══ MODULE CHAINING — connect solver outputs to next solver inputs ═══
+const CHAIN_MAP={
+ FORECAST:[
+  {to:'STOCK',label:'Inventario',extract:function(sol,par){
+   var fc=sol.results.forecast||[];var monthly=fc[0]||0;var annual=r2(monthly*12);
+   return{params:{demand_D:annual,order_cost_k:undefined,holding_cost_c1:undefined,acquisition_cost_b:undefined,planning_horizon_T:1,lead_time_LT:0,safety_stock_Sp:0},description:'Demanda pronosticada: '+monthly.toLocaleString('es-AR')+'/mes → '+annual.toLocaleString('es-AR')+'/año'};
+  }},
+  {to:'FLUJO_CAJA',label:'Flujo de Caja',extract:function(sol,par){
+   var fc=sol.results.forecast||[];var monthly=fc[0]||0;
+   return{params:{opening_balance:undefined,periods:6,inflows:[{name:'Ingreso estimado (pronóstico)',amount:r2(monthly)}],outflows:[],dso:undefined,dpo:undefined},description:'Ingreso mensual estimado: $'+monthly.toLocaleString('es-AR')};
+  }}
+ ],
+ STOCK:[
+  {to:'FLUJO_CAJA',label:'Flujo de Caja',extract:function(sol,par){
+   var cte=sol.results.CTE||0;var monthlyCost=r2(cte/12);
+   var unitCost=par.acquisition_cost_b||0;var qo=sol.results.qo||0;
+   var nOrders=sol.results.no_orders||0;var monthlyPurchase=r2(unitCost*qo*nOrders/12);
+   var outs=[{name:'Costos inventario (EOQ)',amount:monthlyCost}];
+   if(monthlyPurchase>0)outs.push({name:'Compras de mercadería',amount:monthlyPurchase});
+   return{params:{opening_balance:undefined,periods:6,inflows:[],outflows:outs,dso:undefined,dpo:undefined},description:'Costo inventario: $'+monthlyCost.toLocaleString('es-AR')+'/mes'+(monthlyPurchase>0?' + compras $'+monthlyPurchase.toLocaleString('es-AR')+'/mes':'')};
+  }}
+ ],
+ RENTABILIDAD:[
+  {to:'FLUJO_CAJA',label:'Flujo de Caja',extract:function(sol,par){
+   var res=sol.results;var ins=[];var outs=[];
+   if(res.products){res.products.forEach(function(pr){if(pr.revenue>0)ins.push({name:pr.name+' (ventas)',amount:r2(pr.revenue)});});}
+   if(res.total_variable_cost>0)outs.push({name:'Costos variables',amount:r2(res.total_variable_cost)});
+   if(res.fixed_costs>0)outs.push({name:'Costos fijos',amount:r2(res.fixed_costs)});
+   return{params:{opening_balance:undefined,periods:6,inflows:ins,outflows:outs,dso:undefined,dpo:undefined},description:'Ingresos: $'+r2(res.total_revenue||0).toLocaleString('es-AR')+'/mes — Costos: $'+r2(res.total_cost||0).toLocaleString('es-AR')+'/mes'};
+  }}
+ ],
+ INVEST:[
+  {to:'FLUJO_CAJA',label:'Flujo de Caja',extract:function(sol,par){
+   var alt=sol.alternatives&&sol.alternatives[0]?sol.alternatives[0]:null;
+   if(!alt)return{params:{opening_balance:0,periods:6,inflows:[],outflows:[],dso:undefined,dpo:undefined},description:'Sin datos de inversión'};
+   var I0=Math.abs(alt.annual_fcf_table&&alt.annual_fcf_table[0]?alt.annual_fcf_table[0].fcf:0);
+   var avgFCF=0;var fcfTable=alt.annual_fcf_table||[];
+   for(var i=1;i<fcfTable.length;i++)avgFCF+=fcfTable[i].fcf;
+   if(fcfTable.length>1)avgFCF=r2(avgFCF/(fcfTable.length-1)/12);
+   var ins=avgFCF>0?[{name:'FCF proyecto '+alt.name,amount:avgFCF}]:[];
+   var outs=avgFCF<0?[{name:'Costos proyecto '+alt.name,amount:Math.abs(avgFCF)}]:[];
+   return{params:{opening_balance:r2(-I0),periods:Math.min((alt.useful_life||5)*12,24),inflows:ins,outflows:outs,dso:undefined,dpo:undefined},description:'Inversión: $'+I0.toLocaleString('es-AR')+' — FCF mensual: $'+Math.abs(avgFCF).toLocaleString('es-AR')};
+  }}
+ ],
+ QUEUE:[
+  {to:'FLUJO_CAJA',label:'Flujo de Caja',extract:function(sol,par){
+   var optM=sol.economic_analysis&&sol.economic_analysis.optimal_M?sol.economic_analysis.optimal_M:(par.num_servers_M||1);
+   var cs=par.cost_per_server_cs||0;
+   var monthlyStaff=r2(optM*cs*160);// 160 hrs/mes
+   return{params:{opening_balance:undefined,periods:6,inflows:[],outflows:[{name:'Personal ('+optM+' servidores)',amount:monthlyStaff}],dso:undefined,dpo:undefined},description:optM+' servidores × $'+cs+'/hr = $'+monthlyStaff.toLocaleString('es-AR')+'/mes'};
+  }}
+ ]
+};
+
+function startChain(targetModule){
+ var chains=CHAIN_MAP[session.module];
+ if(!chains)return;
+ var chain=null;
+ for(var i=0;i<chains.length;i++){if(chains[i].to===targetModule){chain=chains[i];break;}}
+ if(!chain)return;
+ var extracted=chain.extract(session.solution,session.params);
+ var chainSource={module:session.module,moduleName:MODULE_DEFS[session.module].name,description:extracted.description};
+ session.module=targetModule;
+ session.subtype=null;
+ session.stage='collect';
+ session.params=extracted.params;
+ session.assumptions=[];
+ session.solution=null;
+ session._chainSource=chainSource;
+ updUI();updateQuickButtons();
+ var msg='🔗 **Encadené los datos de '+chainSource.moduleName+'.**\n';
+ msg+='📊 '+extracted.description+'\n\n';
+ msg+=checkAndAsk();
+ addMsg('a',msg);
+ updateQuickButtons();
+}
+
 // ─── COMPLETE CONVERSATIONAL ENGINE FROM ORIGINAL ─────────────
 // Update all text in dynamic UI
 function updateAllUIText() {
@@ -3522,6 +3599,17 @@ function handleQueueYN(tl){
 }
 
 function checkAndAsk(){
+ const S=session,p=S.params;
+ // Chain badge: show source info once
+ var _chainPrefix='';
+ if(S._chainSource&&!S._chainSource._shown){
+  S._chainSource._shown=true;
+  _chainPrefix='📊 _Datos cargados de '+S._chainSource.moduleName+': '+S._chainSource.description+'_\n\n';
+ }
+ var _result=_checkAndAskInner();
+ return _chainPrefix?_chainPrefix+_result:_result;
+}
+function _checkAndAskInner(){
  const S=session,p=S.params;
  if(S.module==='STOCK'){
   const need=[['demand_D','stock_q_demand'],['order_cost_k','stock_q_order'],['holding_cost_c1','stock_q_hold'],['acquisition_cost_b','stock_q_price']];
@@ -5874,6 +5962,7 @@ function updateQuickButtons(){
     {label:'Sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar modelo',txt:'Explicame el modelo'},
     {label:'Exportar a Excel',txt:'Exportar a Excel'},
+    {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='QUEUE'){
@@ -5884,6 +5973,7 @@ function updateQuickButtons(){
     {label:'Probar con más servidores',txt:'¿Qué pasa si agrego un servidor más?'},
     {label:'Sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar modelo',txt:'Explicame el modelo'},
+    {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='INVEST'){
@@ -5893,6 +5983,7 @@ function updateQuickButtons(){
     {label:'Comparar con otra alternativa',txt:'Quiero comparar con otra alternativa'},
     {label:'Análisis de sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar fórmulas',txt:'Explicame las fórmulas de VAN y TIR'},
+    {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='LP'){
@@ -5909,6 +6000,8 @@ function updateQuickButtons(){
     {label:'📄 Exportar reporte',fn:'exportReport()'},
     {label:'Cambiar método',txt:'Quiero probar otro método'},
     {label:'Explicar modelo',txt:'Explicame las fórmulas'},
+    {label:'🔗 Usar en → Inventario',fn:'startChain("STOCK")'},
+    {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='RENTABILIDAD'){
@@ -5917,6 +6010,7 @@ function updateQuickButtons(){
     {label:'📄 Exportar reporte',fn:'exportReport()'},
     {label:'Agregar producto',txt:'Quiero agregar otro producto'},
     {label:'Explicar modelo',txt:'Explicame el análisis'},
+    {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='FLUJO_CAJA'){
