@@ -772,6 +772,24 @@ body.app-mode .user-pill.logged{display:flex}
 .shopify-stat .stat-num{font-size:1.1rem;font-weight:800;color:var(--ac)}
 .shopify-stat .stat-label{font-size:.6rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px}
 
+/* ═══ AUTO-SOLVE DASHBOARD ═══ */
+.as-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin:.8rem 0}
+.as-card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:1rem;text-align:center;transition:all .25s;cursor:pointer;position:relative;overflow:hidden}
+.as-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.as-card.solved{border-color:var(--ac)}
+.as-card.missing{border-color:var(--wr);opacity:.75}
+.as-card .as-icon{font-size:1.4rem;margin-bottom:.3rem}
+.as-card .as-metric{font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
+.as-card .as-label{font-size:.68rem;color:var(--ts);margin-top:.15rem;text-transform:uppercase;letter-spacing:.3px}
+.as-card .as-sub{font-size:.65rem;color:var(--ts);margin-top:.3rem;opacity:.8}
+.as-card .as-badge{position:absolute;top:.5rem;right:.5rem;font-size:.55rem;padding:.15rem .4rem;border-radius:4px;font-weight:700;text-transform:uppercase}
+.as-card.solved .as-badge{background:rgba(6,214,160,.15);color:var(--ac)}
+.as-card.missing .as-badge{background:rgba(245,158,11,.15);color:var(--wr)}
+.as-header{text-align:center;margin-bottom:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--bd)}
+.as-header h4{margin:0 0 .2rem;font-size:.9rem;font-weight:700}
+.as-header p{margin:0;font-size:.7rem;color:var(--ts)}
+@media(max-width:480px){.as-grid{grid-template-columns:1fr}.as-card .as-metric{font-size:1.3rem}}
+
 /* ═══ DATA FORM INPUTS ═══ */
 .df-in{width:100%;padding:.45rem .6rem;background:var(--bg);border:1px solid var(--bd);border-radius:8px;font-size:.78rem;color:var(--tx);font-family:inherit;transition:border-color .2s,box-shadow .2s;box-sizing:border-box}
 .df-in:focus{outline:none;border-color:var(--pl);box-shadow:0 0 0 3px rgba(108,60,225,.12)}
@@ -1279,7 +1297,8 @@ body.app-mode .user-pill.logged{display:flex}
       <div class="shopify-stat"><div class="stat-num" id="shopOrderCount">0</div><div class="stat-label">Órdenes</div></div>
      </div>
      <div style="display:flex;gap:.4rem;margin-top:.5rem">
-      <button class="shopify-connect-btn" style="flex:1;background:linear-gradient(135deg,var(--p),var(--ac))" onclick="runAIAnalysis()">Analizar con AI</button>
+      <button class="shopify-connect-btn" style="flex:1;background:linear-gradient(135deg,#f59e0b,#ef4444);font-size:.72rem;padding:.4rem" onclick="shopifyAutoSolveAll()">🚀 Auto-resolver</button>
+      <button class="shopify-connect-btn" style="flex:1;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.4rem" onclick="runAIAnalysis()">Analizar</button>
       <button class="shopify-connect-btn" id="resyncBtn" style="flex:0 0 auto;padding:.4rem .6rem;background:var(--s2);font-size:.68rem" onclick="resyncShopify()" title="Re-sincronizar datos de Shopify">🔄</button>
      </div>
      <div id="syncFeedback" style="display:none;font-size:.65rem;color:var(--ts);margin-top:.3rem;text-align:center"></div>
@@ -8458,6 +8477,8 @@ function renderSmartAnalysis(analysis){
  if(!el)return;
  var html='';
 
+ // Auto-solve all button
+ html+='<button class="shopify-connect-btn" style="margin-bottom:.6rem;background:linear-gradient(135deg,#f59e0b,#ef4444);font-size:.78rem;padding:.5rem" onclick="shopifyAutoSolveAll()">🚀 Auto-resolver todos los módulos</button>';
  // General insights
  html+='<div class="ai-insight-card" style="border-color:var(--ac)"><h5>📊 Tu tienda Shopify</h5><p>'+analysis.general_insights+'</p></div>';
 
@@ -8725,6 +8746,179 @@ function saveCostsAndReanalyze(){
  localStorage.setItem('invop_user_costs',JSON.stringify(costs));
  // Re-analyze with costs
  autoAnalyzeShopify();
+}
+
+// ═══ SHOPIFY AUTO-SOLVE ALL — 1-click solve every module ═══
+function mapAIInputsToParams(moduleName,inputs){
+ if(!inputs)return null;
+ if(moduleName==='STOCK'&&inputs.D){
+  return{demand_D:inputs.D,order_cost_k:inputs.K,holding_cost_c1:inputs.h,acquisition_cost_b:inputs.cost||0,planning_horizon_T:1,lead_time_LT:(inputs.L||0)/365,safety_stock_Sp:0};
+ }
+ if(moduleName==='RENTABILIDAD'&&inputs.products){
+  return{products:inputs.products.map(function(p){return{name:p.name,price:p.price_venta||p.price||0,unit_cost:p.cost||p.unit_cost||0,quantity:p.volume||p.quantity||0};}),fixed_costs:inputs.fixed_costs||0};
+ }
+ if(moduleName==='FORECAST'&&inputs.timeseries&&inputs.timeseries.length>=3){
+  return{timeseries:inputs.timeseries,method:'ALL',periods_ahead:3,window:3,alpha:0.2};
+ }
+ if(moduleName==='FLUJO_CAJA'){
+  return{opening_balance:inputs.opening_balance||0,periods:inputs.periods||6,inflows:inputs.inflows||[],outflows:inputs.outflows||[],dso:undefined,dpo:undefined};
+ }
+ return null;
+}
+
+function shopifyAutoSolveAll(){
+ var store=getShopifyStore();
+ if(!store){alert('Conectá tu tienda Shopify primero.');return;}
+ // Show loading in modal
+ showModal('aiAnalysisModal');
+ var el=document.getElementById('aiAnalysisContent');
+ if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div style="width:40px;height:40px;border:3px solid var(--ac);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto"></div><p style="margin-top:1rem;color:var(--ts);font-size:.8rem">Resolviendo todos los módulos...</p></div>';
+
+ // If we already have analysis, use it
+ if(window._lastAnalysis){
+  _executeAutoSolve(window._lastAnalysis);
+  return;
+ }
+ // Otherwise fetch analysis first
+ var u=getUser();
+ var savedCosts={};try{savedCosts=JSON.parse(localStorage.getItem('invop_user_costs'))||{};}catch(e){}
+ fetch(INVOP_CONFIG.API_BASE+'/api/ai/analyze',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({store_id:store.store_id||null,user_id:(u&&u.email)||'',modules:['STOCK','FORECAST','RENTABILIDAD','FLUJO_CAJA'],user_costs:Object.keys(savedCosts).length?savedCosts:null})
+ }).then(function(r){return r.json();}).then(function(data){
+  if(data.error)throw new Error(data.error);
+  window._lastAnalysis=data.analysis;
+  _executeAutoSolve(data.analysis);
+ }).catch(function(err){
+  if(el)el.innerHTML='<div style="text-align:center;padding:1.5rem"><p style="color:var(--dn);font-size:.85rem">Error: '+err.message+'</p><button class="shopify-connect-btn" style="margin-top:1rem;max-width:200px" onclick="closeModal(\'aiAnalysisModal\')">Cerrar</button></div>';
+ });
+}
+
+function _executeAutoSolve(analysis){
+ var results=[];
+ var mods=analysis.modules||[];
+ for(var i=0;i<mods.length;i++){
+  var mod=mods[i];
+  if(!mod.inputs)continue;
+  var params=mapAIInputsToParams(mod.module,mod.inputs);
+  if(!params)continue;
+  var isComplete=mod.needs.length===0;
+  try{
+   var sol=SOLVERS[mod.module].solve(params);
+   results.push({module:mod.module,params:params,solution:sol,complete:isComplete,insights:mod.insights});
+  }catch(e){
+   results.push({module:mod.module,params:params,solution:null,complete:false,error:e.message,insights:mod.insights});
+  }
+ }
+ // Store results globally for later detail loading
+ window._autoSolveResults=results;
+ renderAutoSolveDashboard(results,analysis);
+}
+
+function renderAutoSolveDashboard(results,analysis){
+ var el=document.getElementById('aiAnalysisContent');
+ if(!el)return;
+ var store=getShopifyStore()||{};
+ var icons={STOCK:'📦',FORECAST:'📈',RENTABILIDAD:'💰',FLUJO_CAJA:'💵'};
+ var names={STOCK:'Inventario',FORECAST:'Pronóstico',RENTABILIDAD:'Rentabilidad',FLUJO_CAJA:'Flujo de Caja'};
+ var solved=results.filter(function(r){return r.solution&&r.solution.status;}).length;
+
+ var html='<div class="as-header">';
+ html+='<h4>🚀 Auto-Solve — Tu Tienda Shopify</h4>';
+ html+='<p>'+(store.product_count||'?')+' productos · '+(store.order_count||'?')+' órdenes · '+solved+'/'+results.length+' módulos resueltos</p>';
+ html+='</div>';
+ html+='<div class="as-grid">';
+
+ for(var i=0;i<results.length;i++){
+  var r=results[i];var sol=r.solution;
+  var isSolved=sol&&sol.status&&sol.status!=='ERROR';
+  var cardClass=isSolved?'as-card solved':'as-card missing';
+  html+='<div class="'+cardClass+'" onclick="loadAutoSolveDetail(\''+r.module+'\')">';
+  html+='<div class="as-badge">'+(isSolved?'RESUELTO':'INCOMPLETO')+'</div>';
+  html+='<div class="as-icon">'+(icons[r.module]||'🔧')+'</div>';
+
+  if(isSolved){
+   var metric='',label='',sub='';
+   if(r.module==='FORECAST'&&sol.results){
+    var fc=sol.results.forecast||[];
+    metric='$'+r0(fc[0]||0).toLocaleString('es-AR');
+    label='Ventas próx período';
+    sub=sol.method||sol.model||'';
+   }else if(r.module==='STOCK'&&sol.results){
+    metric=r0(sol.results.qo||0).toLocaleString('es-AR')+' un';
+    label='Lote óptimo (EOQ)';
+    sub='Costo anual: $'+r0(sol.results.CTE||0).toLocaleString('es-AR');
+   }else if(r.module==='RENTABILIDAD'&&sol.results){
+    metric=r2(sol.results.net_margin_pct||0)+'%';
+    label='Margen neto';
+    sub='Ganancia: $'+r0(sol.results.net_profit||0).toLocaleString('es-AR');
+   }else if(r.module==='FLUJO_CAJA'&&sol.results){
+    var fb=sol.results.final_balance||0;
+    metric=(fb>=0?'+':'')+' $'+r0(Math.abs(fb)).toLocaleString('es-AR');
+    label='Balance final ('+r0(sol.results.nPeriods||6)+'m)';
+    var nm=sol.results.neg_months||0;
+    sub=nm>0?'⚠️ '+nm+' mes(es) en rojo':'✓ Siempre positivo';
+   }
+   html+='<div class="as-metric">'+metric+'</div>';
+   html+='<div class="as-label">'+label+'</div>';
+   html+='<div class="as-sub">'+sub+'</div>';
+  }else{
+   html+='<div class="as-metric" style="-webkit-text-fill-color:var(--wr)">—</div>';
+   html+='<div class="as-label">'+(names[r.module]||r.module)+'</div>';
+   html+='<div class="as-sub">'+(r.error||'Faltan datos')+'</div>';
+  }
+  html+='</div>';
+ }
+ html+='</div>';
+
+ // Action buttons
+ html+='<div style="display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap;justify-content:center">';
+ if(solved>0)html+='<button class="shopify-connect-btn" style="flex:1;max-width:200px;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.45rem" onclick="autoSolveExportAll()">📄 Exportar reporte</button>';
+ html+='<button class="shopify-connect-btn" style="flex:1;max-width:200px;background:var(--s2);font-size:.72rem;padding:.45rem" onclick="window._lastAnalysis=null;shopifyAutoSolveAll()">🔄 Re-resolver</button>';
+ html+='<button class="shopify-connect-btn" style="flex:1;max-width:200px;background:var(--card);border:1px solid var(--bd);color:var(--tx);font-size:.72rem;padding:.45rem" onclick="closeModal(\'aiAnalysisModal\')">Cerrar</button>';
+ html+='</div>';
+ el.innerHTML=html;
+}
+
+function loadAutoSolveDetail(moduleName){
+ var results=window._autoSolveResults||[];
+ var found=null;
+ for(var i=0;i<results.length;i++){if(results[i].module===moduleName){found=results[i];break;}}
+ if(!found||!found.solution){alert('No hay resultado para '+moduleName);return;}
+ closeModal('aiAnalysisModal');
+ // Load into session
+ session.module=moduleName;
+ session.params=found.params;
+ session.solution=found.solution;
+ session.stage='solved';
+ session.assumptions=['Datos de Shopify (auto-solve)'];
+ session.subtype=null;
+ // Update UI
+ document.querySelectorAll('.mcard').forEach(function(c){c.classList.remove('sel');});
+ var card=document.querySelector('[data-m="'+moduleName+'"]');
+ if(card)card.classList.add('sel');
+ var wel=document.getElementById('wel');
+ if(wel)wel.style.display='none';
+ var bb=document.getElementById('backBtn');
+ if(bb)bb.style.display='inline-block';
+ var msgs=document.getElementById('msgs');
+ if(msgs)msgs.querySelectorAll('.msg').forEach(function(m){m.remove();});
+ updUI();
+ addMsg('u','[Shopify Auto-Solve → '+moduleName+']');
+ var formatted=fmtSolution(found.solution);
+ addMsg('a',mdToHtml(formatted));
+ updateQuickButtons();
+ if(typeof renderSolutionCharts==='function')renderSolutionCharts();
+}
+
+function autoSolveExportAll(){
+ // Export all solved modules as one report
+ var results=window._autoSolveResults||[];
+ var solved=results.filter(function(r){return r.solution&&r.solution.status;});
+ if(solved.length===0){alert('No hay resultados para exportar.');return;}
+ // Use the first solved module to trigger export, then user can export others
+ loadAutoSolveDetail(solved[0].module);
+ setTimeout(function(){if(typeof exportReport==='function')exportReport();},500);
 }
 
 console.log('[INVOP AI] Bloque F loaded — Shopify + AI + Plans integration active.');
