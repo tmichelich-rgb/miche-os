@@ -2457,9 +2457,12 @@ function tMsg(msgKey) {
 
 function extractForecast(txt){
  const p={};
- const tl=txt.toLowerCase().trim();
+ // Normalize Spanish thousands iteratively: 1.200.000 → 1200000, keep 3.5 as decimal
+ let txtN=txt,_fp='';while(txtN!==_fp){_fp=txtN;txtN=txtN.replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2');}
+ txtN=txtN.replace(/(\d),(\d{3})(?!\d)/g,'$1$2');
+ const tl=txtN.toLowerCase().trim();
  // Extract time series data: look for sequences of numbers
- const nums=txt.match(/[\d]+[.,]?[\d]*/g);
+ const nums=txtN.match(/[\d]+[.,]?[\d]*/g);
  if(nums&&nums.length>=3){
   const parsed=nums.map(n=>parseFloat(n.replace(',','.')));
   const allValid=parsed.every(n=>!isNaN(n)&&n>0);
@@ -2874,32 +2877,42 @@ function fmtMultiPeriodSolution(res){
 }
 
 function extractStock(t){
- const tl=t.toLowerCase().replace(/,/g,'.'),p={};
- const m=(rx)=>{const r=tl.match(rx);return r?parseFloat(r[1].replace(',','.')):null;};
- const D=m(/(?:vendo|consumo|demanda|venta|uso|gasto|necesito)\s*(?:de\s+)?(?:unas?\s+)?(?:como\s+)?([\d.]+)/)||
+ // Normalize Spanish thousands iteratively: 15.000 → 15000, 1.200.000 → 1200000
+ let _n=t.toLowerCase(),_p='';while(_n!==_p){_p=_n;_n=_n.replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2');}
+ _n=_n.replace(/(\d),(\d{3})(?!\d)/g,'$1$2');// comma thousands: 15,000 → 15000
+ const tl=_n.replace(/,/g,'.');// remaining commas → decimal
+ const p={};
+ const m=(rx)=>{const r=tl.match(rx);return r?parseFloat(r[1]):null;};
+ // DEMAND_D
+ const D=m(/(?:vendo|consumo|demanda|venta|uso|gasto|necesito)\s*(?:anual|mensual|diaria|semanal)?[:\s]*(?:de\s+)?(?:unas?\s+)?(?:como\s+)?\$?\s*([\d.]+)/)||
   m(/([\d.]+)\s*(?:unidades?|un\.?|piezas?|cajas?|bolsas?|kg|litros?)\s*(?:por\s+)?(?:al?\s+)?(?:a[ñn]o|mes|semana|d[ií]a)/)||
-  m(/demanda\s*(?:anual|mensual|diaria|semanal)?\s*(?:de\s+)?\s*(?:es\s+de\s+)?([\d.]+)/)||
+  m(/demanda\s*(?:anual|mensual|diaria|semanal)?[:\s]*(?:de\s+)?(?:es\s+de\s+)?\$?\s*([\d.]+)/)||
   m(/(?:se\s+)?(?:venden?|consumen?|usan?)\s*(?:unas?\s+)?(?:como\s+)?([\d.]+)/);
  if(D)p.demand_D=D;
- const k=m(/(?:pedido|pedir|orden).*?(?:gasto|cuesta|costo|sale)\s*(?:como\s*)?\$?\s*([\d.]+)/)||
+ // ORDER_COST_K — handles "Costo de cada pedido al proveedor: $200"
+ const k=m(/costo\s*(?:de\s+)?(?:cada\s+)?(?:pedido|orden|pedir)[\w\s]*?[:\s]+\$?\s*([\d.]+)/)||
+  m(/(?:pedido|pedir|orden)[\w\s]*?(?:gasto|cuesta|costo|sale)[:\s]*(?:como\s*)?\$?\s*([\d.]+)/)||
   m(/(?:gasto|cuesta|sale)\s*(?:como\s*)?\$?\s*([\d.]+).*?(?:flete|papeleo|pedido|env[ií]o|transporte)/)||
-  m(/costo\s*(?:de\s+)?(?:pedido|orden|pedir)\s*:?\s*\$?\s*([\d.]+)/)||
   m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:cada\s+)?pedido/);
  if(k)p.order_cost_k=k;
- const c1=m(/almacenar.*?(?:cuesta|costo)\s*(?:m[aá]s\s+o\s+menos\s*)?\$?\s*([\d.]+)/)||
-  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad\s+)?(?:por\s+)?(?:a[ñn]o|mes)?\s*(?:de\s+)?(?:almac|stock|mantener|guardar|depositar)/)||
+ // HOLDING_COST_C1 — handles "Costo de almacenamiento: $3"
+ const c1=m(/(?:costo\s*(?:de\s+)?)?almacen\w*[:\s]+\$?\s*([\d.]+)/)||
+  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad\s+)?(?:por\s+)?(?:a[ñn]o|mes)\s*(?:de\s+)?(?:almac|stock|mantener|guardar|depositar)/)||
   m(/(?:mantener|guardar|almacenar|tener\s+en\s+stock)\s*(?:cada\s+)?(?:una?\s+)?(?:unidad\s+)?(?:cuesta|sale|vale)\s*\$?\s*([\d.]+)/)||
-  m(/costo\s*(?:de\s+)?(?:almacen|mantenim|stock)\w*\s*:?\s*\$?\s*([\d.]+)/);
+  m(/costo\s*(?:de\s+)?(?:almacen|mantenim|stock)\w*[:\s]*\$?\s*([\d.]+)/);
  if(c1)p.holding_cost_c1=c1;
- const b2=m(/(?:me\s+)?(?:sale|cuesta|vale|compro\s+a)\s*\$?\s*([\d.]+)\s*(?:cada\s+un[oa]|por\s+unidad|c\/u)?/)||
-  m(/(?:precio\s+(?:unitario|de\s+compra|de\s+adquisición))\s*:?\s*\$?\s*([\d.]+)/)||
+ // ACQUISITION_COST_B — handles "Costo de adquisición: $45 por unidad"
+ const b2=m(/(?:me\s+)?(?:sale|cuesta|vale|compro\s+a)\s*\$?\s*([\d.]+)\s*(?:cada\s+un[oa]|por\s+unidad|c\/u)/)||
+  m(/(?:precio\s+(?:unitario|de\s+compra|de\s+adquisición)|costo\s+(?:de\s+)?adquisición)[:\s]*\$?\s*([\d.]+)/)||
   m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad|cada\s+un[oa]|c\/u)/);
  if(b2)p.acquisition_cost_b=b2;
- const lt=m(/(?:tarda|demora|entrega|llega|demoran?|tardan?)\s*(?:unos?\s*)?([\d.]+)\s*d[ií]as/)||
-  m(/([\d.]+)\s*d[ií]as?\s*(?:de\s+)?(?:en\s+)?(?:entreg|llegar|demora|espera)/)||
-  m(/(?:plazo|tiempo)\s*(?:de\s+)?(?:entrega|reposición|envío)\s*:?\s*([\d.]+)\s*d[ií]as/);
+ // LEAD_TIME_LT — handles "Lead time del proveedor: 10 días hábiles"
+ const lt=m(/(?:tarda|demora|entrega|llega|demoran?|tardan?|lead\s*time)[\w\s]*?[:\s]+(?:unos?\s*)?([\d.]+)\s*d[ií]as/)||
+  m(/([\d.]+)\s*d[ií]as?\s*(?:de\s+)?(?:en\s+)?(?:entreg|llegar|demora|espera|háb)/)||
+  m(/(?:plazo|tiempo)\s*(?:de\s+)?(?:entrega|reposición|envío)[:\s]*([\d.]+)\s*d[ií]as/);
  if(lt)p.lead_time_LT=lt/365;
- const c2=m(/(?:costo\s+(?:de\s+)?(?:faltante|escasez|agotamiento|ruptura))\s*:?\s*\$?\s*([\d.]+)/)||
+ // SHORTAGE_COST_C2
+ const c2=m(/(?:costo\s+(?:de\s+)?(?:faltante|escasez|agotamiento|ruptura))[:\s]*\$?\s*([\d.]+)/)||
   m(/(?:faltante|escasez)\s*(?:cuesta|sale)\s*\$?\s*([\d.]+)/);
  if(c2)p.shortage_cost_c2=c2;
  return p;
