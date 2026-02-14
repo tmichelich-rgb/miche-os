@@ -2113,17 +2113,41 @@ const FLUJO_CAJA={
   const nPeriods=+(p.periods||6);
   const inflows=p.inflows||[];
   const outflows=p.outflows||[];
+  const dso=+(p.dso||0); // Days Sales Outstanding (plazo cobro)
+  const dpo=+(p.dpo||0); // Days Payable Outstanding (plazo pago)
   if(inflows.length===0&&outflows.length===0)return{status:'ERROR',message:'Se necesita al menos un ingreso o egreso.'};
   const totalIn=inflows.reduce((s,i)=>s+(+(i.amount||0)),0);
   const totalOut=outflows.reduce((s,o)=>s+(+(o.amount||0)),0);
+  // DSO/DPO: convert days to fraction of month delayed
+  const dsoMonths=dso/30; // e.g. 45 days = 1.5 months
+  const dpoMonths=dpo/30;
+  // Effective cash received per month = totalIn * (30 / (30 + DSO_extra_days))
+  // Simplified: in month M, we receive sales from M - dsoMonths ago
+  // For first dsoMonths months, partial inflows; after that, steady state
   const netMonthly=totalIn-totalOut;
   const timeline=[];
   let bal=opening;
   let minBal=opening,minMonth=1,negMonths=0,firstNeg=null;
+  // Accumulate deferred inflows/outflows
+  const dsoLagMonths=Math.ceil(dsoMonths);
+  const dpoLagMonths=Math.ceil(dpoMonths);
   for(let m=1;m<=nPeriods;m++){
    const ob=bal;
-   const cb=r2(ob+totalIn-totalOut);
-   timeline.push({month:m,opening:r2(ob),inflows:r2(totalIn),outflows:r2(totalOut),closing:cb});
+   // DSO effect: first dsoLag months have reduced inflows (sales made but not yet collected)
+   let effectiveIn=totalIn;
+   if(dso>0&&m<=dsoLagMonths){
+    // Ramp up: in month 1 with 60-day DSO, you collect 0; month 2, partial; month 3+, full
+    const collectFraction=Math.max(0,Math.min(1,(m-dsoMonths)));
+    effectiveIn=r2(totalIn*Math.max(0,collectFraction));
+   }
+   // DPO effect: first dpoLag months have reduced outflows (you delay paying suppliers)
+   let effectiveOut=totalOut;
+   if(dpo>0&&m<=dpoLagMonths){
+    const payFraction=Math.max(0,Math.min(1,(m-dpoMonths)));
+    effectiveOut=r2(totalOut*Math.max(0,payFraction));
+   }
+   const cb=r2(ob+effectiveIn-effectiveOut);
+   timeline.push({month:m,opening:r2(ob),inflows:r2(effectiveIn),outflows:r2(effectiveOut),closing:cb});
    if(cb<0){negMonths++;if(firstNeg===null)firstNeg=m;}
    if(cb<minBal){minBal=cb;minMonth=m;}
    bal=cb;
@@ -2142,6 +2166,10 @@ const FLUJO_CAJA={
   if(totalOut>totalIn)actions.push('Reducir egresos o aumentar ingresos — flujo neto negativo');
   if(finalBal<0)actions.push('El saldo final es negativo: $'+r0(finalBal).toLocaleString('es-AR'));
   if(netMonthly>0&&negMonths===0)actions.push('Flujo neto positivo de $'+r0(netMonthly).toLocaleString('es-AR')+'/mes');
+  if(dso>0)actions.push('DSO (plazo cobro): '+dso+' días — cobrás en promedio '+Math.round(dso)+' días después de vender');
+  if(dpo>0)actions.push('DPO (plazo pago): '+dpo+' días — pagás proveedores en '+Math.round(dpo)+' días');
+  if(dso>0&&dpo>0){const ccc=dso-dpo;if(ccc>0)actions.push('Ciclo de conversión de caja: '+Math.round(ccc)+' días — necesitás financiar '+Math.round(ccc)+' días de operación');else actions.push('Ciclo de conversión de caja: '+Math.round(Math.abs(ccc))+' días a favor — tus proveedores te financian');}
+  if(dso>0&&negMonths>0)actions.push('Reducir DSO (cobrar más rápido) mejoraría tu liquidez en los primeros meses');
   // Sensitivity
   const sensIn10=FLUJO_CAJA._sensInflows(opening,totalIn,totalOut,nPeriods,-0.10);
   const sensIn20=FLUJO_CAJA._sensInflows(opening,totalIn,totalOut,nPeriods,-0.20);
@@ -2150,7 +2178,7 @@ const FLUJO_CAJA={
   return{
    status:severity==='CRITICAL'?'⚠️ CRÍTICO':severity==='WARN'?'⚠️ ATENCIÓN':'ÓPTIMO',
    model:'Proyección de Flujo de Caja',
-   results:{opening,nPeriods,inflows,outflows,totalIn,totalOut,net_monthly:r2(netMonthly),totalInAll,totalOutAll,timeline,final_balance:finalBal,min_balance:minBal,min_month:minMonth,neg_months:negMonths,first_neg_month:firstNeg},
+   results:{opening,nPeriods,inflows,outflows,totalIn,totalOut,net_monthly:r2(netMonthly),totalInAll,totalOutAll,timeline,final_balance:finalBal,min_balance:minBal,min_month:minMonth,neg_months:negMonths,first_neg_month:firstNeg,dso,dpo,ccc:Math.max(0,dso-dpo)},
    decision:{summary,actions,severity},
    sensitivity:{inflows_minus10:sensIn10,inflows_minus20:sensIn20,outflows_plus10:sensOut10,outflows_plus20:sensOut20}
   };
@@ -2407,7 +2435,7 @@ function extractRentabilidad(txt){
 }
 
 function extractFlujoCaja(txt){
- const p={opening_balance:undefined,periods:undefined,inflows:[],outflows:[]};
+ const p={opening_balance:undefined,periods:undefined,inflows:[],outflows:[],dso:undefined,dpo:undefined};
  const tl=txt.toLowerCase().replace(/(\d)\.(\d{3})(?!\d)/g,'$1$2');
  // Opening balance
  let m=tl.match(/(?:arranco|empiezo|tengo|saldo\s+inicial|caja\s+inicial|inicio|abro)\s*(?:con|de|en|:)?\s*\$?\s*([\d.,]+)/i);
@@ -2489,6 +2517,14 @@ function extractFlujoCaja(txt){
    if(nm.length>1&&amt>0&&/proveedor|sueldo|salario|alquiler|servicio|luz|gas|impuesto|cuota|gasto|costo|egres/i.test(nm)&&!seenOut.has(nm.toLowerCase())){seenOut.add(nm.toLowerCase());p.outflows.push({name:nm.charAt(0).toUpperCase()+nm.slice(1),amount:amt});}
   }
  }
+ // ── DSO: Days Sales Outstanding (plazo de cobro)
+ var dsoM=tl.match(/(?:dso|plazo\s+de\s+cobro|cobro\s+a|me\s+pagan\s+(?:a|en)|tardo\s+en\s+cobrar|demora\s+(?:de\s+)?cobro|días?\s+(?:de\s+)?cobro)\s*(?:de|en|:)?\s*(\d+)\s*(?:d[ií]as?)?/i);
+ if(dsoM)p.dso=parseInt(dsoM[1]);
+ if(!p.dso){dsoM=tl.match(/(\d+)\s*(?:d[ií]as?)\s*(?:de\s+)?(?:cobro|plazo\s+cobro|para\s+cobrar|dso)/i);if(dsoM)p.dso=parseInt(dsoM[1]);}
+ // ── DPO: Days Payable Outstanding (plazo de pago)
+ var dpoM=tl.match(/(?:dpo|plazo\s+de\s+pago|pago\s+a|pago\s+(?:a|en)|tardo\s+en\s+pagar|demora\s+(?:de\s+)?pago|días?\s+(?:de\s+)?pago\s+(?:a\s+)?proveedor)\s*(?:de|en|:)?\s*(\d+)\s*(?:d[ií]as?)?/i);
+ if(dpoM)p.dpo=parseInt(dpoM[1]);
+ if(!p.dpo){dpoM=tl.match(/(\d+)\s*(?:d[ií]as?)\s*(?:de\s+)?(?:pago|plazo\s+pago|para\s+pagar|dpo)/i);if(dpoM)p.dpo=parseInt(dpoM[1]);}
  return p;
 }
 
@@ -2509,6 +2545,13 @@ function fmtConfirmFlujoCaja(){
  }
  const net=p.inflows.reduce((s,i)=>s+(+(i.amount||0)),0)-p.outflows.reduce((s,o)=>s+(+(o.amount||0)),0);
  s+=`- Flujo neto mensual: **$${net.toLocaleString('es-AR')}**\n`;
+ if(p.dso||p.dpo){
+  s+='\n**Plazos de cobro/pago:**\n';
+  if(p.dso)s+=`- DSO (plazo de cobro): **${p.dso} días**\n`;
+  if(p.dpo)s+=`- DPO (plazo de pago): **${p.dpo} días**\n`;
+  const ccc=(p.dso||0)-(p.dpo||0);
+  s+=`- Ciclo de conversión de caja: **${ccc} días** ${ccc>0?'(necesitás financiar '+ccc+' días)':'(tus proveedores te financian)'}\n`;
+ }
  if(S.assumptions.length){s+='\n**Supuestos:**\n';S.assumptions.forEach(a=>s+=`- ${a}\n`);}
  s+='\n¿Es correcto? Puedo **resolver** o ajustar algo.';
  return s;
@@ -3092,7 +3135,7 @@ function processMsg(txt){
   if(txt.trim()==='4'){S.module='INVEST';S.stage='invest_input';S.params._raw=txt;updUI();return processInvestInput(txt);}
   if(txt.trim()==='5'){S.module='FORECAST';S.stage='collect';S.params={};updUI();updateQuickButtons();return tMsg('forecast_q_data');}
   if(txt.trim()==='6'){S.module='RENTABILIDAD';S.stage='collect';S.params={products:[],fixed_costs:undefined};updUI();updateQuickButtons();return tMsg('rent_q_products');}
-  if(txt.trim()==='7'){S.module='FLUJO_CAJA';S.stage='collect';S.params={opening_balance:undefined,periods:undefined,inflows:[],outflows:[]};updUI();updateQuickButtons();return tMsg('fc_q_data');}
+  if(txt.trim()==='7'){S.module='FLUJO_CAJA';S.stage='collect';S.params={opening_balance:undefined,periods:undefined,inflows:[],outflows:[],dso:undefined,dpo:undefined};updUI();updateQuickButtons();return tMsg('fc_q_data');}
 
   if(isMultiPeriodPlan(txt)){
    S.module='LP';S.stage='lp_input';
@@ -3120,7 +3163,7 @@ function processMsg(txt){
    if(d.mod==='LP'){S.params._raw=txt;S.stage='lp_input';updUI();return processLPInput(txt);}
    if(d.mod==='FORECAST'){Object.assign(S.params,extractForecast(txt));updUI();updateQuickButtons();return checkAndAsk();}
    if(d.mod==='RENTABILIDAD'){S.params={products:[],fixed_costs:undefined};const ex=extractRentabilidad(txt);if(ex.products.length>0)S.params.products=ex.products;if(ex.fixed_costs!==undefined)S.params.fixed_costs=ex.fixed_costs;updUI();return checkAndAsk();}
-   if(d.mod==='FLUJO_CAJA'){S.params={opening_balance:undefined,periods:undefined,inflows:[],outflows:[]};const ex=extractFlujoCaja(txt);if(ex.opening_balance!==undefined)S.params.opening_balance=ex.opening_balance;if(ex.periods)S.params.periods=ex.periods;if(ex.inflows.length>0)S.params.inflows=ex.inflows;if(ex.outflows.length>0)S.params.outflows=ex.outflows;updUI();return checkAndAsk();}
+   if(d.mod==='FLUJO_CAJA'){S.params={opening_balance:undefined,periods:undefined,inflows:[],outflows:[],dso:undefined,dpo:undefined};const ex=extractFlujoCaja(txt);if(ex.opening_balance!==undefined)S.params.opening_balance=ex.opening_balance;if(ex.periods)S.params.periods=ex.periods;if(ex.inflows.length>0)S.params.inflows=ex.inflows;if(ex.outflows.length>0)S.params.outflows=ex.outflows;if(ex.dso)S.params.dso=ex.dso;if(ex.dpo)S.params.dpo=ex.dpo;updUI();return checkAndAsk();}
    return checkAndAsk();
   }
   return tMsg('module_choice');
@@ -3218,6 +3261,8 @@ function processMsg(txt){
    if(ex.periods)S.params.periods=ex.periods;
    if(ex.inflows.length>0)S.params.inflows=[...S.params.inflows,...ex.inflows];
    if(ex.outflows.length>0)S.params.outflows=[...S.params.outflows,...ex.outflows];
+   if(ex.dso)S.params.dso=ex.dso;
+   if(ex.dpo)S.params.dpo=ex.dpo;
    // Handle bare number for opening balance or periods
    const bareNum=txt.trim().replace(/[\$\s]/gi,'').replace(/,/g,'.');
    const isNum=/^[\d.]+$/.test(bareNum)&&!isNaN(parseFloat(bareNum));
@@ -3335,7 +3380,7 @@ function processMsg(txt){
     }
    }
    if(ex.fixed_costs!==undefined)S.params.fixed_costs=ex.fixed_costs;updUI();return checkAndAsk();}
-  if(S.module==='FLUJO_CAJA'){S.stage='collect';if(!Array.isArray(S.params.inflows))S.params.inflows=[];if(!Array.isArray(S.params.outflows))S.params.outflows=[];const ex=extractFlujoCaja(txt);if(ex.opening_balance!==undefined)S.params.opening_balance=ex.opening_balance;if(ex.periods)S.params.periods=ex.periods;if(ex.inflows.length>0)S.params.inflows=[...S.params.inflows,...ex.inflows];if(ex.outflows.length>0)S.params.outflows=[...S.params.outflows,...ex.outflows];updUI();return checkAndAsk();}
+  if(S.module==='FLUJO_CAJA'){S.stage='collect';if(!Array.isArray(S.params.inflows))S.params.inflows=[];if(!Array.isArray(S.params.outflows))S.params.outflows=[];const ex=extractFlujoCaja(txt);if(ex.opening_balance!==undefined)S.params.opening_balance=ex.opening_balance;if(ex.periods)S.params.periods=ex.periods;if(ex.inflows.length>0)S.params.inflows=[...S.params.inflows,...ex.inflows];if(ex.outflows.length>0)S.params.outflows=[...S.params.outflows,...ex.outflows];if(ex.dso)S.params.dso=ex.dso;if(ex.dpo)S.params.dpo=ex.dpo;updUI();return checkAndAsk();}
   S.stage='collect';
   return tMsg('adjust_data');
  }
@@ -3551,7 +3596,21 @@ function checkAndAsk(){
   if(!p.outflows||p.outflows.length===0)return tMsg('fc_q_outflows')+fcProgress;
   if(!p.periods){S.params._askingPeriods=true;return tMsg('fc_q_periods')+fcProgress;}
   S.params._askingPeriods=false;
-  if(!S.assumptions.length)S.assumptions.push('Ingresos y egresos constantes cada mes.','Sin estacionalidad ni eventos extraordinarios.');
+  // Ask about DSO/DPO once (optional — user can skip)
+  if(S.params._askedDsoDpo===undefined){
+   S.params._askedDsoDpo=true;
+   if(fcHave.length>0)fcProgress='\n\n_Ya tengo: '+fcHave.join(', ')+'._';
+   return '¿Tus clientes te pagan en el momento o a plazo? ¿Y vos a tus proveedores?\n\n_(Ej: "Cobro a 30 días y pago a 60 días" o "Todo al contado". Si no sabés, escribí **resolver** y asumo cobro/pago inmediato.)_'+fcProgress;
+  }
+  if(!S.assumptions.length){
+   S.assumptions.push('Ingresos y egresos constantes cada mes.');
+   if(!p.dso&&!p.dpo)S.assumptions.push('Cobro y pago inmediato (sin DSO/DPO).');
+   else{
+    if(p.dso)S.assumptions.push('Plazo de cobro (DSO): '+p.dso+' días.');
+    if(p.dpo)S.assumptions.push('Plazo de pago (DPO): '+p.dpo+' días.');
+   }
+   S.assumptions.push('Sin estacionalidad ni eventos extraordinarios.');
+  }
   S.stage='confirm';
   return fmtConfirmFlujoCaja();
  }
@@ -5984,6 +6043,12 @@ function openDataForm(mod){
   }
   html+='</div>';
   html+='<button class="qb" style="margin:.3rem 0" onclick="addDfFlowRow(\'dfOutRows\')">+ Agregar egreso</button>';
+  html+='<div style="font-size:.75rem;color:var(--ts);font-weight:600;margin:.8rem 0 .3rem">Plazos de cobro/pago (opcional)</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">DSO — Plazo de cobro (días)</label><input class="df-in" id="dfDso" type="number" placeholder="Ej: 30" value="'+(session.params.dso||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">DPO — Plazo de pago (días)</label><input class="df-in" id="dfDpo" type="number" placeholder="Ej: 60" value="'+(session.params.dpo||'')+'"></div>';
+  html+='</div>';
+  html+='<div style="font-size:.65rem;color:var(--ts);opacity:.7;margin-top:.2rem">0 = cobro/pago inmediato. Dejá vacío si no aplica.</div>';
  }
  else if(mod==='STOCK'){
   t.innerHTML='📦 Inventario';
@@ -6047,6 +6112,10 @@ function submitDataForm(){
   S.params.periods=per;
   if(ins2.length>0)S.params.inflows=ins2;
   if(outs2.length>0)S.params.outflows=outs2;
+  var dfDso=parseInt(document.getElementById('dfDso').value);
+  var dfDpo=parseInt(document.getElementById('dfDpo').value);
+  if(!isNaN(dfDso)&&dfDso>0)S.params.dso=dfDso;
+  if(!isNaN(dfDpo)&&dfDpo>0)S.params.dpo=dfDpo;
  }
  else if(_dfModule==='STOCK'){
   var d=parseFloat(document.getElementById('dfDemand').value);
