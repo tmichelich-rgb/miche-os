@@ -594,6 +594,16 @@ textarea::placeholder{color:var(--ts)}
  .sens-toggle{font-size:.78rem;padding:.6rem .8rem}
 }
 
+/* ═══ MONTE CARLO ═══ */
+.mc-panel{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:1.2rem;margin:.8rem 0}
+.mc-head{font-size:.85rem;font-weight:700;color:var(--tx);margin-bottom:.6rem}
+.mc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:.8rem 0}
+.mc-stat{text-align:center;padding:.5rem;background:rgba(108,60,225,.08);border-radius:8px}
+.mc-stat-label{font-size:.65rem;color:var(--ts);text-transform:uppercase;font-weight:600}
+.mc-stat-val{font-size:1.1rem;font-weight:800;color:var(--pl)}
+.mc-interp{font-size:.78rem;color:var(--ts);margin-top:.5rem;padding:.5rem;background:rgba(6,214,160,.08);border-radius:8px;line-height:1.4}
+@media(max-width:480px){.mc-stats{grid-template-columns:1fr 1fr}}
+
 /* FLOATING CTA */
 .floating-cta{position:fixed;bottom:2rem;right:2rem;padding:1rem 2rem;background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border:none;border-radius:50px;font-size:1rem;font-weight:700;cursor:pointer;z-index:200;box-shadow:0 6px 30px rgba(108,60,225,.5);transition:all .35s cubic-bezier(.4,0,.2,1);opacity:0;transform:translateY(20px);pointer-events:none;letter-spacing:.3px}
 .floating-cta.show{opacity:1;transform:translateY(0);pointer-events:all}
@@ -4979,6 +4989,171 @@ function resetSensSliders(){
  try{sensUpdateChart(S.module,S._originalSolution,S._originalParams);}catch(e){}
 }
 
+/* ═══ MONTE CARLO SIMULATION ═══ */
+const MC_METRIC={
+ LP:{key:'Z',label:'Z óptimo',extract:r=>r.objective_value},
+ STOCK:{key:'CTE',label:'Costo total anual',extract:r=>(r.results||{}).CTE},
+ QUEUE:{key:'CT',label:'Costo total/h',extract:r=>{const ec=r.economic_analysis;const o=ec?.comparisons?.find(c=>c.is_optimal);return o?o.cost_total_per_hour:null;}},
+ INVEST:{key:'VAN',label:'VAN',extract:r=>(r.alternatives||[])[0]?.van},
+ FORECAST:{key:'Forecast',label:'Pronóstico próx.',extract:r=>{const f=(r.results||{}).forecast;return f&&f.length?f[0]:null;}},
+ RENTABILIDAD:{key:'Ganancia',label:'Ganancia neta',extract:r=>(r.results||{}).net_profit},
+ FLUJO_CAJA:{key:'Saldo',label:'Saldo final',extract:r=>(r.results||{}).final_balance}
+};
+
+function sampleMCParams(mod,baseParams){
+ const tmpP=JSON.parse(JSON.stringify(baseParams));
+ const defs=SENS_DEFS[mod]||[];
+ defs.forEach(d=>{
+  if(d.isScale){
+   const arr=tmpP[d.scaleArr];if(!arr||!arr.length)return;
+   const pctRange=d.abs||30;
+   const factor=1+(Math.random()*2-1)*pctRange/100;
+   tmpP[d.scaleArr]=arr.map(item=>{const c=Object.assign({},item);c[d.scaleField]=+(item[d.scaleField]||0)*factor;if(d.scaleField==='quantity')c[d.scaleField]=Math.max(1,Math.round(c[d.scaleField]));return c;});
+  }else if(d.rhsIdx!==undefined){
+   if(tmpP.constraints&&tmpP.constraints[d.rhsIdx]){const bv=d.baseVal||0;const pct=d.pct||30;tmpP.constraints[d.rhsIdx].rhs=bv+(Math.random()*2-1)*Math.abs(bv||1)*(pct/100);}
+  }else if(d.altKey){
+   if(tmpP.alternatives&&tmpP.alternatives.length){const bv=baseParams.alternatives[0][d.key]||0;if(d.abs!==undefined){const v=bv+(Math.random()*2-1)*d.abs;tmpP.alternatives.forEach(alt=>{alt[d.key]=v;});}else{const pct=d.pct||30;const v=bv+(Math.random()*2-1)*Math.abs(bv||1)*(pct/100);tmpP.alternatives.forEach(alt=>{alt[d.key]=v;});}}
+  }else{
+   const bv=baseParams[d.key];if(bv==null)return;
+   if(d.abs!==undefined){let v=bv+(Math.random()*2-1)*d.abs;if(d.key==='window')v=Math.max(2,Math.round(v));if(d.key==='dso'||d.key==='dpo')v=Math.max(0,Math.round(v));if(d.key==='alpha')v=Math.max(0.01,Math.min(0.99,v));tmpP[d.key]=v;}
+   else{const pct=d.pct||30;const range=Math.abs(bv||1)*(pct/100);tmpP[d.key]=Math.max(0.001,bv+(Math.random()*2-1)*range);}
+  }
+ });
+ return tmpP;
+}
+
+function solveMC(mod,tmpP,origParams){
+ if(mod==='STOCK')return STOCK.solve(tmpP);
+ if(mod==='QUEUE'){
+  if(origParams.cost_per_wait_ce&&origParams.cost_per_server_cs){
+   const minM=Math.max(1,Math.ceil((tmpP.arrival_rate_lambda||1)/(tmpP.service_rate_mu||1)));
+   let bestCT=Infinity,bestRes=null;
+   for(let m=Math.max(1,minM-1);m<=minM+5;m++){tmpP.num_servers_M=m;const tr=QUEUE.solve(tmpP);if(tr.status==='ÓPTIMO'&&tr.economic_analysis){const o=tr.economic_analysis.comparisons?.find(c=>c.is_optimal);if(o&&o.cost_total_per_hour<bestCT){bestCT=o.cost_total_per_hour;bestRes=tr;}}}
+   return bestRes||QUEUE.solve(tmpP);
+  }
+  return QUEUE.solve(tmpP);
+ }
+ if(mod==='INVEST')return INVEST.solve(tmpP);
+ if(mod==='LP')return LP.solve(tmpP);
+ if(mod==='FORECAST')return FORECAST.solve(tmpP);
+ if(mod==='RENTABILIDAD')return RENTABILIDAD.solve(tmpP);
+ if(mod==='FLUJO_CAJA')return FLUJO_CAJA.solve(tmpP);
+ return null;
+}
+
+function runMonteCarlo(mod,baseParams,N){
+ const t0=performance.now();
+ const values=[];
+ const extractFn=MC_METRIC[mod]?.extract;
+ if(!extractFn)return null;
+ for(let i=0;i<N;i++){
+  try{
+   const tmpP=sampleMCParams(mod,baseParams);
+   const res=solveMC(mod,tmpP,baseParams);
+   if(!res||res.status==='ERROR'||res.status==='INFACTIBLE')continue;
+   const val=extractFn(res);
+   if(val!=null&&!isNaN(val)&&isFinite(val))values.push(val);
+  }catch(e){}
+ }
+ if(values.length<10)return null;
+ values.sort((a,b)=>a-b);
+ const n=values.length;
+ const mean=values.reduce((s,v)=>s+v,0)/n;
+ const variance=values.reduce((s,v)=>s+(v-mean)**2,0)/n;
+ const stdev=Math.sqrt(variance);
+ const cv=mean!==0?stdev/Math.abs(mean)*100:0;
+ const pIdx=p=>Math.min(n-1,Math.max(0,Math.floor(p*n)));
+ const p10=values[pIdx(0.10)],p25=values[pIdx(0.25)],p50=values[pIdx(0.50)],p75=values[pIdx(0.75)],p90=values[pIdx(0.90)];
+ // Histogram
+ const numBins=Math.min(30,Math.max(10,Math.ceil(Math.sqrt(n))));
+ const minV=values[0],maxV=values[n-1];
+ const binW=(maxV-minV)/numBins||1;
+ const bins=new Array(numBins).fill(0);
+ const binEdges=[];
+ for(let i=0;i<=numBins;i++)binEdges.push(minV+i*binW);
+ values.forEach(v=>{let b=Math.floor((v-minV)/binW);if(b>=numBins)b=numBins-1;bins[b]++;});
+ const elapsed=performance.now()-t0;
+ return{values,n,mean,stdev,cv,p10,p25,p50,p75,p90,bins,binEdges,numBins,elapsed};
+}
+
+function buildMCPanel(mod,mc){
+ const m=MC_METRIC[mod]||{};
+ const lbl=m.label||'Métrica';
+ const fmt=v=>'$'+r0(v).toLocaleString('es-AR');
+ // P10-P90 interpretation
+ const baseVal=MC_METRIC[mod]?.extract(session._originalSolution);
+ let interp='';
+ if(mod==='INVEST'){
+  const negCount=mc.values.filter(v=>v<0).length;
+  const negPct=r1(negCount/mc.n*100);
+  interp=`Hay un <b>${r0(100-negPct)}%</b> de probabilidad de que el VAN sea positivo (rentable). `;
+  interp+=`Rango probable (80%): ${fmt(mc.p10)} a ${fmt(mc.p90)}.`;
+ }else if(mod==='FLUJO_CAJA'){
+  const negCount=mc.values.filter(v=>v<0).length;
+  const negPct=r1(negCount/mc.n*100);
+  interp=negPct>0?`⚠️ En <b>${negPct}%</b> de los escenarios terminás en rojo. `:`✅ En ningún escenario terminás en rojo. `;
+  interp+=`Rango probable (80%): ${fmt(mc.p10)} a ${fmt(mc.p90)}.`;
+ }else{
+  interp+=`Rango probable (80%): ${fmt(mc.p10)} a ${fmt(mc.p90)}. `;
+  interp+=`Mediana: ${fmt(mc.p50)}.`;
+  if(mc.cv>25)interp+=` ⚠️ Alta variabilidad (CV ${r1(mc.cv)}%).`;
+ }
+ const binLabels=[];
+ for(let i=0;i<mc.numBins;i++){binLabels.push(fmt(mc.binEdges[i]));}
+ return `<div class="mc-panel">
+<div class="mc-head">🎲 Simulación Monte Carlo — ${mc.n.toLocaleString()} escenarios</div>
+<canvas id="chart-mc-hist" height="220"></canvas>
+<div class="mc-stats">
+<div class="mc-stat"><div class="mc-stat-label">P10 (pesimista)</div><div class="mc-stat-val">${fmt(mc.p10)}</div></div>
+<div class="mc-stat"><div class="mc-stat-label">P50 (mediana)</div><div class="mc-stat-val">${fmt(mc.p50)}</div></div>
+<div class="mc-stat"><div class="mc-stat-label">P90 (optimista)</div><div class="mc-stat-val">${fmt(mc.p90)}</div></div>
+<div class="mc-stat"><div class="mc-stat-label">Media</div><div class="mc-stat-val">${fmt(mc.mean)}</div></div>
+<div class="mc-stat"><div class="mc-stat-label">Desvío</div><div class="mc-stat-val">${fmt(mc.stdev)}</div></div>
+<div class="mc-stat"><div class="mc-stat-label">CV</div><div class="mc-stat-val">${r1(mc.cv)}%</div></div>
+</div>
+<div class="mc-interp">${interp}</div>
+<div style="font-size:.6rem;color:var(--ts);text-align:right;margin-top:.3rem">${mc.n} sims en ${r0(mc.elapsed)}ms</div>
+</div>`;
+}
+
+function renderMCChart(mc){
+ const canvas=document.getElementById('chart-mc-hist');
+ if(!canvas)return;
+ const fmt=v=>'$'+r0(v).toLocaleString('es-AR');
+ const labels=[];
+ for(let i=0;i<mc.numBins;i++){labels.push(fmt(mc.binEdges[i])+' – '+fmt(mc.binEdges[i+1]));}
+ const maxBin=Math.max(...mc.bins);
+ const colors=mc.bins.map(b=>{const t=b/maxBin;return `rgba(${Math.round(108-50*t)},${Math.round(60+154*t)},${Math.round(225-65*t)},0.75)`;});
+ if(chartInstances['mc-hist']){chartInstances['mc-hist'].destroy();}
+ chartInstances['mc-hist']=new Chart(canvas,{
+  type:'bar',
+  data:{labels,datasets:[{data:mc.bins,backgroundColor:colors,borderColor:colors.map(c=>c.replace('0.75','1')),borderWidth:1,borderRadius:3}]},
+  options:{
+   responsive:true,maintainAspectRatio:false,
+   plugins:{legend:{display:false},tooltip:{callbacks:{title:t=>t[0].label,label:t=>t.raw+' escenarios ('+r1(t.raw/mc.n*100)+'%)'}},
+    annotation:typeof ChartAnnotation!=='undefined'?{annotations:{p10:{type:'line',xMin:null,xMax:null,yMin:0,yMax:maxBin,borderColor:'rgba(239,71,111,0.7)',borderWidth:2,borderDash:[5,3]},p90:{type:'line',xMin:null,xMax:null,yMin:0,yMax:maxBin,borderColor:'rgba(6,214,160,0.7)',borderWidth:2,borderDash:[5,3]}}}:{}
+   },
+   scales:{x:{display:true,ticks:{maxTicksLimit:6,font:{size:9},maxRotation:45}},y:{display:true,ticks:{font:{size:9}},title:{display:true,text:'Frecuencia',font:{size:10}}}}
+  }
+ });
+}
+
+function startMonteCarlo(){
+ const S=session;
+ if(!S._originalParams||!S.module){addMsg('a','⚠️ Primero resolvé un problema para poder simular.');return;}
+ if(!MC_METRIC[S.module]){addMsg('a','⚠️ Monte Carlo no está disponible para este módulo.');return;}
+ const defs=SENS_DEFS[S.module]||[];
+ if(defs.length===0){addMsg('a','⚠️ No hay parámetros de incertidumbre definidos para este módulo.');return;}
+ addMsg('a','⏳ Corriendo simulación Monte Carlo (1000 escenarios)...');
+ setTimeout(()=>{
+  const mc=runMonteCarlo(S.module,S._originalParams,1000);
+  if(!mc){addMsg('a','⚠️ No se obtuvieron suficientes resultados válidos. Intentá con otros datos.');return;}
+  const html=buildMCPanel(S.module,mc);
+  addMsg('a',html);
+  setTimeout(()=>renderMCChart(mc),250);
+ },50);
+}
+
 function fmtSolution(res){
  const S=session,mod=S.module;
  if(S.params._meta&&S.params._meta.type==='multiperiod'){
@@ -6043,6 +6218,7 @@ function updateQuickButtons(){
     {label:'Explicar modelo',txt:'Explicame el modelo'},
     {label:'Exportar a Excel',txt:'Exportar a Excel'},
     {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='QUEUE'){
@@ -6054,6 +6230,7 @@ function updateQuickButtons(){
     {label:'Sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar modelo',txt:'Explicame el modelo'},
     {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='INVEST'){
@@ -6064,6 +6241,7 @@ function updateQuickButtons(){
     {label:'Análisis de sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar fórmulas',txt:'Explicame las fórmulas de VAN y TIR'},
     {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='LP'){
@@ -6072,6 +6250,7 @@ function updateQuickButtons(){
     {label:'📄 Exportar reporte',fn:'exportReport()'},
     {label:'Sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar modelo',txt:'Explicame las fórmulas'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='FORECAST'){
@@ -6082,6 +6261,7 @@ function updateQuickButtons(){
     {label:'Explicar modelo',txt:'Explicame las fórmulas'},
     {label:'🔗 Usar en → Inventario',fn:'startChain("STOCK")'},
     {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='RENTABILIDAD'){
@@ -6091,6 +6271,7 @@ function updateQuickButtons(){
     {label:'Agregar producto',txt:'Quiero agregar otro producto'},
     {label:'Explicar modelo',txt:'Explicame el análisis'},
     {label:'🔗 Usar en → Flujo de Caja',fn:'startChain("FLUJO_CAJA")'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }else if(S.module==='FLUJO_CAJA'){
@@ -6100,6 +6281,7 @@ function updateQuickButtons(){
     {label:'Agregar ingreso/egreso',txt:'Quiero agregar un ingreso o egreso'},
     {label:'Sensibilidad',txt:'Análisis de sensibilidad'},
     {label:'Explicar modelo',txt:'Explicame las fórmulas'},
+    {label:'🎲 Monte Carlo',fn:'startMonteCarlo()'},
     {label:'Nuevo problema',txt:'Nuevo problema'}
    ];
   }
