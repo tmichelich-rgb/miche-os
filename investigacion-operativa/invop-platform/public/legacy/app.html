@@ -773,6 +773,15 @@ body.app-mode .user-pill.logged{display:flex}
 .plan-badge.free{background:var(--card);border:1px solid var(--bd);color:var(--ts)}
 .plan-badge.starter{background:rgba(108,60,225,.12);border:1px solid rgba(108,60,225,.3);color:var(--pl)}
 .plan-badge.pro{background:rgba(6,214,160,.12);border:1px solid rgba(6,214,160,.3);color:var(--ac)}
+
+/* ═══ PRO LOCK OVERLAY ═══ */
+.pro-lock-wrap{position:relative}
+.pro-lock-wrap.locked .shopify-panel{filter:blur(2px);opacity:.5;pointer-events:none}
+.pro-lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;background:rgba(15,15,26,.55);border-radius:12px;backdrop-filter:blur(2px);gap:.5rem}
+.pro-lock-overlay .lock-icon{font-size:1.5rem}
+.pro-lock-overlay .lock-text{font-size:.72rem;color:var(--ts);text-align:center;line-height:1.4;max-width:160px}
+.pro-lock-overlay .lock-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .8rem;border-radius:2rem;font-size:.68rem;font-weight:700;background:linear-gradient(135deg,var(--ac),var(--pl));color:#fff;cursor:pointer;transition:all .25s;border:none}
+.pro-lock-overlay .lock-badge:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(6,214,160,.4)}
 </style>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -1281,9 +1290,15 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
    <div class="mcard" data-m="RENTABILIDAD" onclick="selMod('RENTABILIDAD')"><h4>💰 Rentabilidad</h4><p>¿Cuánto gano por producto? ¿Qué conviene vender?</p></div>
    <div class="mcard" data-m="FLUJO_CAJA" onclick="selMod('FLUJO_CAJA')"><h4>💵 Flujo de Caja</h4><p>¿Me alcanza la plata? ¿Cuándo necesito financiamiento?</p></div>
   </div>
-  <div class="ssec" id="shopifySection" style="display:none">
+  <div class="ssec" id="shopifySection">
    <h3>Shopify + AI</h3>
-   <div id="shopifyPanelContent">
+   <div id="shopifyPanelContent" class="pro-lock-wrap">
+    <!-- Lock overlay for non-Pro users -->
+    <div class="pro-lock-overlay" id="proLockOverlay" style="display:none">
+     <div class="lock-icon">🔒</div>
+     <div class="lock-text">Conectá Shopify y analizá tu negocio con AI</div>
+     <button class="lock-badge" onclick="handleUpgrade('pro')">⚡ Upgrade a Pro</button>
+    </div>
     <div class="shopify-panel" id="shopifyNotConnected">
      <h4>🛍️ Conectá tu tienda</h4>
      <p style="font-size:.72rem;color:var(--ts);margin-bottom:.5rem;line-height:1.4">La AI analiza tu negocio y genera insights automáticos.</p>
@@ -7540,10 +7555,19 @@ function updatePlanUI(){
   badge.className='plan-badge '+plan;
   badge.textContent=plan==='free'?'FREE':plan.toUpperCase();
  }
- // Show Shopify section only for Pro users
+ // Show Shopify section always, but locked for non-Pro
  var shopSec=document.getElementById('shopifySection');
+ var lockOverlay=document.getElementById('proLockOverlay');
+ var lockWrap=document.getElementById('shopifyPanelContent');
  if(shopSec){
-  shopSec.style.display=(plan==='pro')?'block':'none';
+  shopSec.style.display='block';
+  if(plan==='pro'){
+   if(lockOverlay)lockOverlay.style.display='none';
+   if(lockWrap)lockWrap.classList.remove('locked');
+  }else{
+   if(lockOverlay)lockOverlay.style.display='flex';
+   if(lockWrap)lockWrap.classList.add('locked');
+  }
  }
  // Update connected store UI if we have store data
  var storeData=getShopifyStore();
@@ -7776,13 +7800,17 @@ function loadAIModule(moduleName,inputsStr){
   window._shopifyEmbedded=true;
   window._shopifyDomain=shopDomain;
 
-  // Force show Shopify panel regardless of plan (they installed the app!)
+  // Force show Shopify panel unlocked (they installed the app!)
   var _origUpdatePlan=updatePlanUI;
   updatePlanUI=function(){
    _origUpdatePlan();
    if(window._shopifyEmbedded){
     var shopSec=document.getElementById('shopifySection');
     if(shopSec)shopSec.style.display='block';
+    var lockOverlay=document.getElementById('proLockOverlay');
+    var lockWrap=document.getElementById('shopifyPanelContent');
+    if(lockOverlay)lockOverlay.style.display='none';
+    if(lockWrap)lockWrap.classList.remove('locked');
     var badge=document.getElementById('planBadge');
     if(badge){badge.className='plan-badge pro';badge.textContent='SHOPIFY';}
    }
