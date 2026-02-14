@@ -371,6 +371,9 @@ textarea::placeholder{color:var(--ts)}
  .chart-row .chart-container{flex:1 1 100%;min-width:100%}
  .chart-container canvas{max-height:240px}
  .msg{max-width:88%}
+ .bubble table{font-size:.78rem}
+ .hbadges{gap:.25rem}
+ .badge{font-size:.6rem;padding:.15rem .35rem}
  header{padding:.5rem 1rem;gap:.6rem}
  .logo{font-size:1.2rem}
  .logo-icon{width:28px;height:28px;font-size:.85rem}
@@ -396,6 +399,8 @@ textarea::placeholder{color:var(--ts)}
  .upgrade-btn:active{transform:scale(.97);opacity:.9}
  .export-btn:active{transform:scale(.96);opacity:.85}
  .sens-toggle:active{transform:scale(.98)}
+ .calc-input-row select{flex:1;min-width:0}
+ .calc-input-row{gap:.4rem}
 }
 
 /* ─── LARGE PHONE (600px) ─── */
@@ -431,6 +436,9 @@ textarea::placeholder{color:var(--ts)}
  .land-hero h1{font-size:clamp(1.6rem,5vw,2.5rem)}
  .land-sub{font-size:clamp(.85rem,2vw,1rem)}
  .land-cta h2{font-size:clamp(1.3rem,4vw,1.8rem)}
+ .calc-input-row{flex-direction:column}
+ .calc-input-row select{width:100%}
+ .df-in{font-size:.8rem;padding:.5rem .6rem}
 }
 
 /* ─── STANDARD PHONE (480px) ─── */
@@ -593,6 +601,8 @@ textarea::placeholder{color:var(--ts)}
  .sens-metric-val{font-size:.82rem}
  .sens-toggle{font-size:.78rem;padding:.6rem .8rem}
 }
+@media(max-width:768px){.sens-metrics{grid-template-columns:repeat(2,1fr)}.sens-body.open{padding:.85rem}}
+@media(max-width:374px){.sens-body.open{padding:.6rem}.sens-metrics{gap:.35rem;padding:.4rem}.sens-metric-val{font-size:.78rem}.sens-reset{font-size:.65rem}}
 
 /* ═══ MONTE CARLO ═══ */
 .mc-panel{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:1.2rem;margin:.8rem 0}
@@ -602,7 +612,10 @@ textarea::placeholder{color:var(--ts)}
 .mc-stat-label{font-size:.65rem;color:var(--ts);text-transform:uppercase;font-weight:600}
 .mc-stat-val{font-size:1.1rem;font-weight:800;color:var(--pl)}
 .mc-interp{font-size:.78rem;color:var(--ts);margin-top:.5rem;padding:.5rem;background:rgba(6,214,160,.08);border-radius:8px;line-height:1.4}
+@media(max-width:768px){.mc-panel{padding:.9rem}.mc-stats{grid-template-columns:repeat(2,1fr)}.mc-stat-val{font-size:.95rem}.mc-interp{font-size:.73rem}}
+@media(max-width:600px){.mc-panel{padding:.75rem}.mc-head{font-size:.8rem}}
 @media(max-width:480px){.mc-stats{grid-template-columns:1fr 1fr}}
+@media(max-width:374px){.mc-panel{padding:.6rem;border-radius:10px}.mc-stats{gap:.35rem}.mc-stat{padding:.35rem}.mc-stat-val{font-size:.85rem}.mc-stat-label{font-size:.6rem}}
 
 /* FLOATING CTA */
 .floating-cta{position:fixed;bottom:2rem;right:2rem;padding:1rem 2rem;background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border:none;border-radius:50px;font-size:1rem;font-weight:700;cursor:pointer;z-index:200;box-shadow:0 6px 30px rgba(108,60,225,.5);transition:all .35s cubic-bezier(.4,0,.2,1);opacity:0;transform:translateY(20px);pointer-events:none;letter-spacing:.3px}
@@ -5125,7 +5138,8 @@ function renderMCChart(mc){
  const maxBin=Math.max(...mc.bins);
  const colors=mc.bins.map(b=>{const t=b/maxBin;return `rgba(${Math.round(108-50*t)},${Math.round(60+154*t)},${Math.round(225-65*t)},0.75)`;});
  // Dynamic height: more bins = taller chart
- const h=Math.max(220,mc.numBins*22);
+ const maxH=window.innerWidth<600?250:400;
+ const h=Math.max(180,Math.min(maxH,mc.numBins*22));
  canvas.parentElement.style.height=h+'px';
  if(chartInstances['mc-hist']){chartInstances['mc-hist'].destroy();}
  chartInstances['mc-hist']=new Chart(canvas,{
