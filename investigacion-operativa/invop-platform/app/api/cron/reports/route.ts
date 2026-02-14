@@ -1,8 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
 // GET /api/cron/reports — Generate scheduled reports (runs weekly Monday 8am)
-export async function GET() {
+// Protected by CRON_SECRET (Vercel sends Authorization: Bearer <secret>)
+export async function GET(request: NextRequest) {
+  // Verify cron secret
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const db = getServiceSupabase();
 

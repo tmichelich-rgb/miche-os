@@ -1311,7 +1311,11 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
       <div class="shopify-stat"><div class="stat-num" id="shopProductCount">0</div><div class="stat-label">Productos</div></div>
       <div class="shopify-stat"><div class="stat-num" id="shopOrderCount">0</div><div class="stat-label">Órdenes</div></div>
      </div>
-     <button class="shopify-connect-btn" style="margin-top:.5rem;background:linear-gradient(135deg,var(--p),var(--ac))" onclick="runAIAnalysis()">Analizar con AI</button>
+     <div style="display:flex;gap:.4rem;margin-top:.5rem">
+      <button class="shopify-connect-btn" style="flex:1;background:linear-gradient(135deg,var(--p),var(--ac))" onclick="runAIAnalysis()">Analizar con AI</button>
+      <button class="shopify-connect-btn" id="resyncBtn" style="flex:0 0 auto;padding:.4rem .6rem;background:var(--s2);font-size:.68rem" onclick="resyncShopify()" title="Re-sincronizar datos de Shopify">🔄</button>
+     </div>
+     <div id="syncFeedback" style="display:none;font-size:.65rem;color:var(--ts);margin-top:.3rem;text-align:center"></div>
     </div>
    </div>
    <div id="aiInsightsContainer"></div>
@@ -7573,6 +7577,13 @@ function updatePlanUI(){
  var storeData=getShopifyStore();
  if(storeData&&plan==='pro'){
   showConnectedStore(storeData);
+  // Background refresh: if last sync > 1h, pull fresh data from Supabase
+  if(storeData.shop_domain&&INVOP_CONFIG.API_BASE){
+   var lastS=storeData.last_sync?new Date(storeData.last_sync).getTime():0;
+   if(Date.now()-lastS>3600000){
+    loadShopifyStoreData(storeData.shop_domain);
+   }
+  }
  }
 }
 
@@ -7604,6 +7615,49 @@ function _timeAgo(date){
  if(s<3600)return 'hace '+Math.floor(s/60)+'m';
  if(s<86400)return 'hace '+Math.floor(s/3600)+'h';
  return 'hace '+Math.floor(s/86400)+'d';
+}
+
+// F2b: RE-SYNC SHOPIFY DATA
+function resyncShopify(){
+ var store=getShopifyStore();
+ var u=getUser();
+ if(!store||!u||!u.email||!INVOP_CONFIG.API_BASE)return;
+
+ var btn=document.getElementById('resyncBtn');
+ var feedback=document.getElementById('syncFeedback');
+ if(btn){btn.disabled=true;btn.textContent='⏳';}
+ if(feedback){feedback.style.display='block';feedback.textContent='Sincronizando con Shopify...';}
+
+ fetch(INVOP_CONFIG.API_BASE+'/api/shopify/sync',{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({shop:store.shop_domain,email:u.email})
+ })
+ .then(function(r){return r.json().then(function(d){return{ok:r.ok,status:r.status,data:d};});})
+ .then(function(res){
+  if(btn){btn.disabled=false;btn.textContent='🔄';}
+  if(res.ok&&res.data.success){
+   // Update local store data
+   store.product_count=res.data.synced.products;
+   store.order_count=res.data.synced.orders;
+   store.last_sync=res.data.last_sync;
+   setShopifyStore(store);
+   showConnectedStore(store);
+   if(feedback){feedback.textContent='✅ '+res.data.synced.products+' productos, '+res.data.synced.orders+' órdenes';feedback.style.color='var(--ac)';}
+   setTimeout(function(){if(feedback){feedback.style.display='none';feedback.style.color='var(--ts)';}},4000);
+  } else if(res.status===429){
+   if(feedback){feedback.textContent='⏳ '+res.data.message;feedback.style.color='var(--wr)';}
+   setTimeout(function(){if(feedback){feedback.style.display='none';feedback.style.color='var(--ts)';}},4000);
+  } else {
+   if(feedback){feedback.textContent='❌ '+(res.data.error||'Error al sincronizar');feedback.style.color='var(--dn)';}
+   setTimeout(function(){if(feedback){feedback.style.display='none';feedback.style.color='var(--ts)';}},5000);
+  }
+ })
+ .catch(function(e){
+  if(btn){btn.disabled=false;btn.textContent='🔄';}
+  if(feedback){feedback.textContent='❌ Error de conexión';feedback.style.color='var(--dn)';feedback.style.display='block';}
+  setTimeout(function(){if(feedback){feedback.style.display='none';feedback.style.color='var(--ts)';}},5000);
+ });
 }
 
 // F3: SHOPIFY OAUTH FLOW
