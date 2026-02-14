@@ -2889,24 +2889,37 @@ function extractStock(t){
   m(/demanda\s*(?:anual|mensual|diaria|semanal)?[:\s]*(?:de\s+)?(?:es\s+de\s+)?\$?\s*([\d.]+)/)||
   m(/(?:se\s+)?(?:venden?|consumen?|usan?)\s*(?:unas?\s+)?(?:como\s+)?([\d.]+)/);
  if(D)p.demand_D=D;
- // ORDER_COST_K — handles "Costo de cada pedido al proveedor: $200"
- const k=m(/costo\s*(?:de\s+)?(?:cada\s+)?(?:pedido|orden|pedir)[\w\s]*?[:\s]+\$?\s*([\d.]+)/)||
+ // ORDER_COST_K — "costo de pedido", "costo por pedido", "costo de hacer un pedido", "$X por pedido"
+ const k=m(/costo\s*(?:de\s+)?(?:cada\s+)?(?:hacer\s+(?:un\s+)?)?(?:pedido|orden|pedir)[\w\s]*?[:\s]+\$?\s*([\d.]+)/)||
+  m(/costo\s*(?:por\s+)?(?:pedido|orden)[:\s]+\$?\s*([\d.]+)/)||
   m(/(?:pedido|pedir|orden)[\w\s]*?(?:gasto|cuesta|costo|sale)[:\s]*(?:como\s*)?\$?\s*([\d.]+)/)||
   m(/(?:gasto|cuesta|sale)\s*(?:como\s*)?\$?\s*([\d.]+).*?(?:flete|papeleo|pedido|env[ií]o|transporte)/)||
+  m(/(?:cada\s+(?:vez\s+que\s+)?(?:hago|hacemos|realizo)\s+(?:un\s+)?pedido)[\w\s]*?(?:sale|cuesta|gasto|pago)\s*\$?\s*([\d.]+)/)||
   m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:cada\s+)?pedido/);
  if(k)p.order_cost_k=k;
- // HOLDING_COST_C1 — handles "Costo de almacenamiento: $3"
+ // HOLDING_COST_C1 — "almacenamiento: $3", "$3 por unidad por año", "guardar cuesta $5"
  const c1=m(/(?:costo\s*(?:de\s+)?)?almacen\w*[:\s]+\$?\s*([\d.]+)/)||
   m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad\s+)?(?:por\s+)?(?:a[ñn]o|mes)\s*(?:de\s+)?(?:almac|stock|mantener|guardar|depositar)/)||
-  m(/(?:mantener|guardar|almacenar|tener\s+en\s+stock)\s*(?:cada\s+)?(?:una?\s+)?(?:unidad\s+)?(?:cuesta|sale|vale)\s*\$?\s*([\d.]+)/)||
-  m(/costo\s*(?:de\s+)?(?:almacen|mantenim|stock)\w*[:\s]*\$?\s*([\d.]+)/);
+  m(/(?:mantener|guardar|almacenar|tener\s+en\s+stock)\s*(?:cada\s+)?(?:una?\s+)?(?:unidad\s+)?(?:me\s+)?(?:cuesta|sale|vale)\s*\$?\s*([\d.]+)/)||
+  m(/costo\s*(?:de\s+)?(?:almacen|mantenim|stock)\w*[:\s]*\$?\s*([\d.]+)/)||
+  m(/\$\s*([\d.]+)\s*por\s+unidad\s+(?:por|al)\s+(?:a[ñn]o|mes)/)||
+  m(/almacenar\s+(?:sale|cuesta|vale)\s*\$?\s*([\d.]+)/);
  if(c1)p.holding_cost_c1=c1;
- // ACQUISITION_COST_B — handles "Costo de adquisición: $45 por unidad"
- const b2=m(/(?:me\s+)?(?:sale|cuesta|vale|compro\s+a)\s*\$?\s*([\d.]+)\s*(?:cada\s+un[oa]|por\s+unidad|c\/u)/)||
+ // ACQUISITION_COST_B — context-aware: avoids confusing storage cost with price
+ var b2=m(/(?:cada\s+(?:un[oa]|unidad)\s+(?:me\s+)?(?:sale|cuesta|vale))\s*\$?\s*([\d.]+)(?!\s*(?:al|por)\s+(?:a[ñn]o|mes))/)||
+  m(/(?:me\s+)?(?:compro\s+a|sale|cuesta|vale)\s*\$?\s*([\d.]+)\s*(?:cada\s+(?:un[oa]|unidad)|c\/u)/)||
+  m(/(?:me\s+)?(?:sale|cuesta|vale)\s*\$?\s*([\d.]+)\s*por\s+unidad(?!\s*(?:por|al)\s+(?:a[ñn]o|mes))/)||
   m(/(?:precio\s+(?:unitario|de\s+compra|de\s+adquisición)|costo\s+(?:de\s+)?adquisición)[:\s]*\$?\s*([\d.]+)/)||
-  m(/\$?\s*([\d.]+)\s*(?:por\s+)?(?:unidad|cada\s+un[oa]|c\/u)/);
+  m(/(?:precio|costo)\s*(?:unitario|de\s+compra)\s*(?:es\s+(?:de\s+)?)?\$?\s*([\d.]+)/)||
+  m(/(?:las?\s+)?compro\s+a\s*\$?\s*([\d.]+)/);
+ if(!b2){// Generic "$X por unidad" — exclude storage context and values equal to c1
+  var _pu,_rx=/\$?\s*([\d.]+)\s*(?:por\s+unidad|cada\s+un[oa]|c\/u)/g;
+  while((_pu=_rx.exec(tl))!==null){var _v=parseFloat(_pu[1]),_af=tl.substring(_pu.index,_pu.index+_pu[0].length+40);
+   if(!/(?:por|al)\s+(?:a[ñn]o|mes)|almac|stock|mantener|guardar/.test(_af)&&(!p.holding_cost_c1||_v!==p.holding_cost_c1)){b2=_v;break;}}
+  if(!b2){b2=m(/(?:precio|costo\s+(?:de\s+)?(?:compra|adquisición))\s*(?:unitario)?\s*(?:es\s+(?:de\s+)?)?[:\s]*\$?\s*([\d.]+)/);if(b2&&b2===p.holding_cost_c1)b2=null;}
+ }
  if(b2)p.acquisition_cost_b=b2;
- // LEAD_TIME_LT — handles "Lead time del proveedor: 10 días hábiles"
+ // LEAD_TIME_LT — "tarda 10 días", "lead time: 10 días", "10 días hábiles"
  const lt=m(/(?:tarda|demora|entrega|llega|demoran?|tardan?|lead\s*time)[\w\s]*?[:\s]+(?:unos?\s*)?([\d.]+)\s*d[ií]as/)||
   m(/([\d.]+)\s*d[ií]as?\s*(?:de\s+)?(?:en\s+)?(?:entreg|llegar|demora|espera|háb)/)||
   m(/(?:plazo|tiempo)\s*(?:de\s+)?(?:entrega|reposición|envío)[:\s]*([\d.]+)\s*d[ií]as/);
