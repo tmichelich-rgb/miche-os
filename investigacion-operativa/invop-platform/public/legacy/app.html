@@ -98,6 +98,31 @@ body.app-mode .app-wrap{opacity:1;pointer-events:all}
 .fromto-card.from .fromto-tag{background:rgba(239,71,111,.1);color:var(--dn);border:1px solid rgba(239,71,111,.2)}
 .fromto-card.to .fromto-tag{background:rgba(6,214,160,.1);color:var(--ac);border:1px solid rgba(6,214,160,.2)}
 
+/* HERO BADGE */
+.hero-badge{margin-top:1.2rem;padding:.5rem 1.2rem;background:rgba(6,214,160,.06);border:1px solid rgba(6,214,160,.2);border-radius:2rem;font-size:.82rem;color:var(--ac);font-weight:500;display:inline-flex;align-items:center;gap:.4rem;letter-spacing:.2px}
+
+/* SOCIAL PROOF / TRUST BAR */
+.trust-bar{padding:2rem 2rem;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+.trust-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;text-align:center;max-width:700px;margin:0 auto}
+.trust-num{font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
+.trust-label{color:var(--ts);font-size:.82rem;margin-top:.3rem}
+
+/* MODULE TABS */
+.modules-nav{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin:1.5rem 0 2rem}
+.module-tab{padding:.55rem 1rem;background:var(--card);border:1px solid var(--bd);border-radius:2rem;color:var(--ts);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .25s;white-space:nowrap}
+.module-tab:hover{border-color:var(--pl);color:var(--tx);background:rgba(108,60,225,.06)}
+.module-tab.active{background:linear-gradient(135deg,var(--p),#5B2ECF);color:#fff;border-color:transparent;box-shadow:0 4px 16px rgba(108,60,225,.3)}
+.module-display{min-height:280px}
+.module-content{text-align:center}
+.module-content h3{font-size:1.2rem;font-weight:700;margin-bottom:.4rem;color:var(--tx)}
+.module-content>p{color:var(--ts);margin-bottom:1.5rem;font-size:.95rem}
+.module-example{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:1.5rem;max-width:600px;margin:0 auto;text-align:left;transition:all .3s}
+.module-example:hover{border-color:rgba(6,214,160,.3);box-shadow:0 4px 20px rgba(6,214,160,.08)}
+.module-example .me-q{color:var(--tx);font-size:.88rem;line-height:1.7;font-style:italic;margin-bottom:1rem}
+.module-example .me-divider{border-top:1px solid var(--bd);padding-top:1rem}
+.module-example .me-tag{color:var(--ac);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.module-example .me-a{color:var(--tx);font-size:.92rem;margin-top:.5rem;line-height:1.5}
+
 /* LANDING NAVBAR */
 .land-nav{position:fixed;top:0;left:0;right:0;z-index:500;background:rgba(15,15,26,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:.6rem 2rem;display:flex;align-items:center;justify-content:space-between;transform:translateY(-100%);transition:transform .4s cubic-bezier(.4,0,.2,1);opacity:0}
 .land-nav.visible{transform:translateY(0);opacity:1}
@@ -123,8 +148,8 @@ body.app-mode .land-nav{display:none}
 
 /* Landing Responsive */
 @media(max-width:1024px){.pillars-7{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:768px){.pillars,.pillars-4,.pillars-7,.questions,.impact-grid{grid-template-columns:1fr}.land-section{padding:2rem 1.5rem;min-height:auto}.fromto-row{grid-template-columns:1fr;gap:.5rem}.fromto-arrow{transform:rotate(90deg);margin:0 auto}.land-nav-links a:not(.land-nav-cta){display:none}.land-nav{padding:.5rem 1rem}}
-@media(max-width:480px){.land-section{padding:1.5rem 1rem}.pillars{gap:1rem}.pillar{padding:1.3rem 1.1rem}.questions{gap:1rem}.q-num{font-size:2rem}.impact-num{font-size:clamp(1.5rem,4vw,2rem)}.impact-card{padding:1.2rem .8rem}.impact-card h4{font-size:.8rem}.impact-card p{font-size:.72rem}.cta-btn{padding:.85rem 1.8rem;font-size:.95rem}}
+@media(max-width:768px){.pillars,.pillars-4,.pillars-7,.questions,.impact-grid{grid-template-columns:1fr}.land-section{padding:2rem 1.5rem;min-height:auto}.fromto-row{grid-template-columns:1fr;gap:.5rem}.fromto-arrow{transform:rotate(90deg);margin:0 auto}.land-nav-links a:not(.land-nav-cta){display:none}.land-nav{padding:.5rem 1rem}.trust-metrics{grid-template-columns:repeat(3,1fr);gap:1rem}.trust-num{font-size:1.6rem}.trust-label{font-size:.75rem}.modules-nav{gap:.35rem}.module-tab{padding:.45rem .75rem;font-size:.78rem}.module-display{min-height:auto}}
+@media(max-width:480px){.land-section{padding:1.5rem 1rem}.pillars{gap:1rem}.pillar{padding:1.3rem 1.1rem}.questions{gap:1rem}.q-num{font-size:2rem}.impact-num{font-size:clamp(1.5rem,4vw,2rem)}.impact-card{padding:1.2rem .8rem}.impact-card h4{font-size:.8rem}.impact-card p{font-size:.72rem}.cta-btn{padding:.85rem 1.8rem;font-size:.95rem}.trust-bar{padding:1.5rem 1rem}.trust-num{font-size:1.4rem}.module-tab{padding:.4rem .6rem;font-size:.72rem}.module-example{padding:1.2rem}.hero-badge{font-size:.75rem;padding:.4rem .8rem}}
 @media(max-width:374px){.land-section{padding:1.2rem .8rem}.pillars{gap:.8rem}.questions{gap:.8rem}.q-card{padding:1rem .85rem}.fromto-stack{gap:1.2rem}.cta-btn{padding:.75rem 1.5rem;font-size:.88rem;border-radius:12px}}
 
 /* HEADER */
@@ -805,11 +830,10 @@ body.app-mode .user-pill.logged{display:flex}
 <nav class="land-nav" id="landNav">
  <div class="land-nav-logo"><div class="nav-icon">I</div>INVOP<span>.AI</span></div>
  <div class="land-nav-links">
-  <a href="#sec-decisions">Qué resuelve</a>
   <a href="#como-funciona">Cómo funciona</a>
-  <a href="#modulos">Módulos</a>
-  <a href="#resultados">Precio</a>
-  <button class="land-nav-cta" onclick="handleStart()">Probalo gratis</button>
+  <a href="#modulos">7 módulos</a>
+  <a href="#precios">Precios</a>
+  <button class="land-nav-cta" onclick="handleStart()">Empezá gratis</button>
  </div>
 </nav>
 
@@ -846,59 +870,33 @@ body.app-mode .user-pill.logged{display:flex}
    </div>
   </div>
  </div>
- <button class="cta-btn" style="margin-top:2rem" onclick="handleStart()"><span>Probalo gratis →</span></button>
- <div class="scroll-hint" onclick="document.getElementById('sec-decisions').scrollIntoView({behavior:'smooth'})">
+ <button class="cta-btn" style="margin-top:2rem" onclick="handleStart()"><span>Empezá gratis — sin tarjeta →</span></button>
+ <div class="hero-badge">✓ Sin tarjeta · Sin código · Sin fórmulas</div>
+ <div class="scroll-hint" onclick="document.getElementById('como-funciona').scrollIntoView({behavior:'smooth'})">
   <span>Descubrí qué resuelve</span>
   <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
  </div>
 </section>
 
-<!-- SECTION 1: Las 7 decisiones -->
-<section class="land-section" id="sec-decisions">
- <div class="land-content">
-  <h2 class="fade-up"><span>Las 7 decisiones</span> <span>que definen tu negocio</span></h2>
-  <p class="fade-up fade-up-d1">Cada decisión mal tomada te cuesta plata. INVOP AI te da la respuesta óptima.</p>
-  <div class="pillars pillars-7">
-   <div class="pillar fade-up fade-up-d1">
-    <span class="pillar-icon">🏭</span>
-    <h3>¿Qué producir?</h3>
-    <p>Maximizá ganancia eligiendo el mix ideal con tus recursos.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d2">
-    <span class="pillar-icon">📦</span>
-    <h3>¿Cuánto stockear?</h3>
-    <p>Pedí la cantidad justa para no tener faltantes ni exceso.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d3">
-    <span class="pillar-icon">🎯</span>
-    <h3>¿Cuántos atender?</h3>
-    <p>Dimensioná tu equipo sin sobre-invertir ni perder clientes.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d4">
-    <span class="pillar-icon">📊</span>
-    <h3>¿Dónde invertir?</h3>
-    <p>Compará alternativas con VAN, TIR y payback real.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d1">
-    <span class="pillar-icon">📈</span>
-    <h3>¿Cuánto vas a vender?</h3>
-    <p>Pronosticá demanda con datos reales y elegí el mejor método.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d2">
-    <span class="pillar-icon">💰</span>
-    <h3>¿Cuánto ganás por producto?</h3>
-    <p>Descomponé tu margen y encontrá qué mejorar.</p>
-   </div>
-   <div class="pillar fade-up fade-up-d3">
-    <span class="pillar-icon">💵</span>
-    <h3>¿Te va a alcanzar la plata?</h3>
-    <p>Proyectá tu flujo de caja y anticipá problemas.</p>
-   </div>
+<!-- SOCIAL PROOF BAR -->
+<section class="trust-bar">
+ <div class="trust-metrics">
+  <div class="fade-up fade-up-d1">
+   <div class="trust-num">500+</div>
+   <div class="trust-label">Problemas resueltos</div>
+  </div>
+  <div class="fade-up fade-up-d2">
+   <div class="trust-num">7</div>
+   <div class="trust-label">Módulos de optimización</div>
+  </div>
+  <div class="fade-up fade-up-d3">
+   <div class="trust-num">&lt;1s</div>
+   <div class="trust-label">Tiempo de respuesta</div>
   </div>
  </div>
 </section>
 
-<!-- SECTION 2: Cómo funciona -->
+<!-- SECTION: Cómo funciona -->
 <section class="land-section" id="como-funciona">
  <div class="land-content">
   <h2 class="fade-up"><span>Cómo funciona en 3 pasos</span></h2>
@@ -923,149 +921,97 @@ body.app-mode .user-pill.logged{display:flex}
  </div>
 </section>
 
-<!-- SECTION 3: Módulos -->
+<!-- SECTION: 7 Módulos (tabs interactivos) -->
 <section class="land-section" id="modulos">
  <div class="land-content">
-  <h2 class="fade-up"><span>7 módulos, un solo lenguaje:</span> <span>el tuyo</span></h2>
-  <p class="fade-up fade-up-d1">Cada módulo tiene su modelo matemático detrás. Vos solo describís el problema.</p>
-  <div class="fromto-stack">
-   <!-- LP -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula"><span class="fn">MAX</span> Z = 0.6x₁ + 0.8x₂ + 7x₃
-s.a. 0.5x₁ + 0.1x₂ + 2x₃ ≤ 100
-     0.05x₁ + 0.08x₂ + 1x₃ ≤ 30</div>
-     <span class="fromto-tag">Producción</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Tengo una panadería. Hago pan, medialunas y tortas. Tengo 100 kg de harina, 30 kg de azúcar y 50 kg de manteca. El pan me deja $0.60, la medialuna $0.80 y la torta $7. ¿Qué me conviene producir?"</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Stock -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">q* = √(2·D·k / c₁)
-CTE = b·D + k·(D/q*) + c₁·(q*/2)
-SR = d·LT + Sp</div>
-     <span class="fromto-tag">Almacenamiento</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Soy distribuidor de caños PVC. Vendo 15.000 unidades/año. Cada pedido cuesta $200. Almacenar sale $3/un/año. Me cuesta $45. El proveedor tarda 10 días. ¿Cuántos pido y cada cuánto?"</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Queue -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">ρ = λ/(M·μ)
-P₀ = 1 / [Σ(ρᵀⁿ/n!) + (ρᵀᴹ/M!)·1/(1-ρ)]
-CT = ce·L + cs·M</div>
-     <span class="fromto-tag">Atención</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Tengo una clínica. Llegan 18 pacientes/hora. Cada médico tarda 15 min. Un médico cuesta $40/hora. La espera del paciente cuesta $25/hora. ¿Cuántos médicos necesito?"</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Investment -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">VAN = Σ FCFₜ/(1+r)ᵗ - I₀
-TIR: r* donde VAN = 0
-FCF = (R - C - T) + D - CAPEX - ΔWC</div>
-     <span class="fromto-tag">Inversión</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Quiero comparar 2 máquinas. Una cuesta $50k, la otra $70k. Ingreso anual $40k, costos $15k. ¿Cuál elegir? Mi costo de capital es 12%."</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Forecast -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">Ŷₜ = αYₜ + (1-α)Ŷₜ₋₁
-SMA = (Σ Yᵢ) / n
-Ŷ = a + bX (regresión lineal)</div>
-     <span class="fromto-tag">Pronóstico</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Mis ventas mensuales fueron: 120, 135, 142, 128, 155. ¿Cuánto voy a vender el próximo mes? Compará todos los métodos."</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Rentabilidad -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">MC = PV - CV
-MCu = MC / Q
-PE = CF / MCu
-Margen% = MC / PV × 100</div>
-     <span class="fromto-tag">Rentabilidad</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Vendo remeras a $2500, me cuestan $1200, mis costos fijos son $180.000/mes. ¿Cuántas necesito vender para no perder plata?"</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
-   <!-- Flujo de Caja -->
-   <div class="fromto-row fade-up">
-    <div class="fromto-card from">
-     <div class="fromto-label">Antes (fórmula)</div>
-     <div class="fromto-formula">FCₜ = Ingresosₜ - Egresosₜ + FCₜ₋₁
-Alerta si FCₜ < 0
-Margen = min(FCₜ) / promedio(Egresosₜ)</div>
-     <span class="fromto-tag">Flujo de caja</span>
-    </div>
-    <div class="fromto-arrow">→</div>
-    <div class="fromto-card to">
-     <div class="fromto-label">Ahora (lenguaje natural)</div>
-     <div class="fromto-natural">"Cobro $500.000/mes, pago sueldos $200.000, alquiler $80.000, proveedores $150.000. Tengo $100.000 en caja. ¿Me alcanza para los próximos 6 meses?"</div>
-     <span class="fromto-tag">Lenguaje natural</span>
-    </div>
-   </div>
+  <h2 class="fade-up"><span>7 módulos,</span> <span>un solo lenguaje: el tuyo</span></h2>
+  <p class="fade-up fade-up-d1">Describí tu problema en español. La AI detecta el módulo y resuelve al instante.</p>
+  <div class="modules-nav fade-up fade-up-d2">
+   <button class="module-tab active" data-module="lp" onclick="switchModule('lp')">🏭 Producción</button>
+   <button class="module-tab" data-module="stock" onclick="switchModule('stock')">📦 Inventario</button>
+   <button class="module-tab" data-module="queue" onclick="switchModule('queue')">🎯 Atención</button>
+   <button class="module-tab" data-module="invest" onclick="switchModule('invest')">📊 Inversión</button>
+   <button class="module-tab" data-module="forecast" onclick="switchModule('forecast')">📈 Pronóstico</button>
+   <button class="module-tab" data-module="rent" onclick="switchModule('rent')">💰 Rentabilidad</button>
+   <button class="module-tab" data-module="fc" onclick="switchModule('fc')">💵 Flujo de Caja</button>
   </div>
- </div>
-</section>
-
-<!-- SECTION: ¿Para quién es? -->
-<section class="land-section" id="para-quien">
- <div class="land-content">
-  <h2 class="fade-up"><span>¿Para quién es</span> <span>INVOP AI?</span></h2>
-  <p class="fade-up fade-up-d1">Cualquier persona que tome decisiones operativas en su negocio.</p>
-  <div class="pillars">
-   <div class="pillar fade-up fade-up-d1">
-    <span class="pillar-icon">🚀</span>
-    <h3>Emprendedores</h3>
-    <p>Tomá decisiones de producción, inventario y precios con modelos matemáticos — sin saber las fórmulas.</p>
+  <div class="module-display fade-up fade-up-d3">
+   <div id="mod-lp" class="module-content">
+    <h3>¿Qué me conviene producir?</h3>
+    <p>Maximizá ganancia eligiendo el mix ideal con tus recursos limitados.</p>
+    <div class="module-example">
+     <div class="me-q">"Tengo una panadería. Hago pan, medialunas y tortas. Tengo 100 kg de harina y 30 kg de azúcar. El pan me deja $0.60, la medialuna $0.80 y la torta $7. ¿Qué me conviene producir?"</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Mix óptimo:</strong> 150 pan + 200 medialunas + 50 tortas. <strong>Ganancia máxima:</strong> $890/día</div>
+     </div>
+    </div>
    </div>
-   <div class="pillar fade-up fade-up-d2">
-    <span class="pillar-icon">🏢</span>
-    <h3>PyMEs</h3>
-    <p>Optimizá operaciones, controlá costos y proyectá flujo de caja para crecer sin sorpresas.</p>
+   <div id="mod-stock" class="module-content" style="display:none">
+    <h3>¿Cuánto pedir y cada cuánto?</h3>
+    <p>Lote óptimo para no tener faltantes ni exceso de stock.</p>
+    <div class="module-example">
+     <div class="me-q">"Vendo 15.000 unidades/año. Cada pedido cuesta $200. Almacenar sale $3/un/año. Me cuesta $45. El proveedor tarda 10 días."</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Lote óptimo:</strong> 1.414 un. <strong>Frecuencia:</strong> cada 34 días. <strong>Costo anual:</strong> $677.500</div>
+     </div>
+    </div>
    </div>
-   <div class="pillar fade-up fade-up-d3">
-    <span class="pillar-icon">💼</span>
-    <h3>Consultores</h3>
-    <p>Deslumbrá a tus clientes con análisis profesional, sensibilidad y reportes automáticos.</p>
+   <div id="mod-queue" class="module-content" style="display:none">
+    <h3>¿Cuántos puestos necesito?</h3>
+    <p>Dimensioná tu equipo sin sobre-invertir ni perder clientes por espera.</p>
+    <div class="module-example">
+     <div class="me-q">"Tengo una clínica. Llegan 18 pacientes/hora. Cada médico tarda 15 min. Médico cuesta $40/hora. Espera cuesta $25/hora."</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Médicos recomendados:</strong> 5. <strong>Espera promedio:</strong> 2.3 min. <strong>Costo total:</strong> $200/hora</div>
+     </div>
+    </div>
+   </div>
+   <div id="mod-invest" class="module-content" style="display:none">
+    <h3>¿Dónde me conviene invertir?</h3>
+    <p>Compará alternativas con VAN, TIR y payback. Elegí con datos.</p>
+    <div class="module-example">
+     <div class="me-q">"Comparo 2 máquinas. Una cuesta $50k, otra $70k. Ingreso $40k/año, costos $15k. Mi tasa es 12%. ¿Cuál elijo?"</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Mejor opción:</strong> Máquina A. <strong>VAN:</strong> $89.500. <strong>TIR:</strong> 18%. <strong>Payback:</strong> 2.1 años</div>
+     </div>
+    </div>
+   </div>
+   <div id="mod-forecast" class="module-content" style="display:none">
+    <h3>¿Cuánto voy a vender?</h3>
+    <p>Pronosticá demanda con datos reales. Compará todos los métodos.</p>
+    <div class="module-example">
+     <div class="me-q">"Mis ventas mensuales: 120, 135, 142, 128, 155. ¿Cuánto voy a vender el próximo mes?"</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Mejor método:</strong> SES (α=0.3). <strong>Pronóstico:</strong> 148 un. <strong>Error (MAD):</strong> 8.2</div>
+     </div>
+    </div>
+   </div>
+   <div id="mod-rent" class="module-content" style="display:none">
+    <h3>¿Cuánto gano por producto?</h3>
+    <p>Punto de equilibrio, margen por producto y análisis ABC.</p>
+    <div class="module-example">
+     <div class="me-q">"Vendo remeras a $2500, me cuestan $1200, costos fijos $180.000/mes. ¿Cuántas necesito vender para no perder?"</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Punto de equilibrio:</strong> 139 un/mes. <strong>Margen unitario:</strong> $1.300. <strong>Margen %:</strong> 52%</div>
+     </div>
+    </div>
+   </div>
+   <div id="mod-fc" class="module-content" style="display:none">
+    <h3>¿Me va a alcanzar la plata?</h3>
+    <p>Proyectá tu flujo de caja mes a mes y anticipá problemas.</p>
+    <div class="module-example">
+     <div class="me-q">"Cobro $500k/mes, pago sueldos $200k, alquiler $80k, proveedores $150k. Tengo $100k en caja. ¿Me alcanza 6 meses?"</div>
+     <div class="me-divider">
+      <div class="me-tag">Respuesta óptima</div>
+      <div class="me-a"><strong>Flujo neto:</strong> +$70k/mes. <strong>Caja mínima:</strong> $45k (mes 2). <strong>Margen de seguridad:</strong> 5.6 meses</div>
+     </div>
+    </div>
    </div>
   </div>
  </div>
@@ -1074,8 +1020,8 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
 <!-- SECTION: Precios -->
 <section class="land-section" id="precios">
  <div class="land-content" style="text-align:center">
-  <h2 class="fade-up"><span>Planes para cada etapa</span></h2>
-  <p class="fade-up fade-up-d1" style="margin:0 auto 1rem">Empezá gratis, escalá cuando lo necesites.</p>
+  <h2 class="fade-up"><span>Probá gratis.</span> <span>Upgradea cuando quieras.</span></h2>
+  <p class="fade-up fade-up-d1" style="margin:0 auto 1rem">Sin tarjeta de crédito. Resolvé 3 problemas gratis, hoy.</p>
   <div class="pricing-grid">
    <div class="pricing-card fade-up fade-up-d1">
     <h3>Free</h3>
@@ -1122,9 +1068,9 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
 
 <!-- FINAL CTA -->
 <section class="land-cta">
- <h2 class="fade-up">Probalo gratis, resolvé 3 problemas</h2>
- <p class="fade-up fade-up-d1">Sin tarjeta, sin código, sin fórmulas. Desde $3.99/mes para resolver ilimitado.</p>
- <button class="cta-btn fade-up fade-up-d2" onclick="handleStart()"><span>Probalo gratis →</span></button>
+ <h2 class="fade-up">Cada decisión sin datos <span style="color:var(--dn)">te cuesta plata</span></h2>
+ <p class="fade-up fade-up-d1">Resolvé tu primer problema en 30 segundos. Gratis, sin registrarte.</p>
+ <button class="cta-btn fade-up fade-up-d2" onclick="handleStart()"><span>Empezá gratis — sin tarjeta →</span></button>
 </section>
 
 </div>
@@ -1134,7 +1080,7 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
 
 <!-- FLOATING CTA -->
 <button class="floating-cta" id="floatingCta" onclick="handleStart()">
- <span>Empezar a resolver</span>
+ <span>Empezá gratis</span>
  <div class="cta-pulse"></div>
 </button>
 
@@ -6963,6 +6909,16 @@ if(floatingCta){
     });
   },{threshold:0.3});
   ctaObs.observe(heroSection);
+}
+
+// Module tab switching (landing page)
+function switchModule(name){
+ document.querySelectorAll('.module-content').forEach(function(el){el.style.display='none';});
+ document.querySelectorAll('.module-tab').forEach(function(el){el.classList.remove('active');});
+ var target=document.getElementById('mod-'+name);
+ if(target){target.style.display='block';target.style.opacity='0';target.style.transition='opacity .3s';setTimeout(function(){target.style.opacity='1';},10);}
+ var tab=document.querySelector('[data-module="'+name+'"]');
+ if(tab)tab.classList.add('active');
 }
 
 // Hero demo rotation — cycles through 3 examples
