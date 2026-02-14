@@ -5102,7 +5102,7 @@ function buildMCPanel(mod,mc){
  for(let i=0;i<mc.numBins;i++){binLabels.push(fmt(mc.binEdges[i]));}
  return `<div class="mc-panel">
 <div class="mc-head">🎲 Simulación Monte Carlo — ${mc.n.toLocaleString()} escenarios</div>
-<canvas id="chart-mc-hist" height="220"></canvas>
+<div style="position:relative;height:220px;width:100%"><canvas id="chart-mc-hist"></canvas></div>
 <div class="mc-stats">
 <div class="mc-stat"><div class="mc-stat-label">P10 (pesimista)</div><div class="mc-stat-val">${fmt(mc.p10)}</div></div>
 <div class="mc-stat"><div class="mc-stat-label">P50 (mediana)</div><div class="mc-stat-val">${fmt(mc.p50)}</div></div>
