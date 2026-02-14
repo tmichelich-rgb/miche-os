@@ -1,21 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
-// POST /api/auth/google — Register/login user from Google OAuth credential
+// POST /api/auth/google — Register/login user from Google OAuth
+// Accepts EITHER:
+//   { credential: "eyJhb..." }  — raw Google JWT (preferred, more secure)
+//   { name, email, picture }    — pre-parsed fields (legacy fallback)
 export async function POST(request: NextRequest) {
   try {
-    const { credential, fingerprint } = await request.json();
+    const body = await request.json();
+    const { credential, fingerprint } = body;
 
-    if (!credential) {
-      return NextResponse.json({ error: 'credential required' }, { status: 400 });
+    let email: string;
+    let name: string;
+    let picture: string | null = null;
+
+    if (credential) {
+      // Decode Google JWT
+      const payload = JSON.parse(
+        Buffer.from(credential.split('.')[1], 'base64').toString()
+      );
+      email = payload.email;
+      name = payload.name || payload.given_name || email.split('@')[0];
+      picture = payload.picture || null;
+    } else if (body.email) {
+      // Legacy: pre-parsed fields from frontend
+      email = body.email;
+      name = body.name || email.split('@')[0];
+      picture = body.picture || null;
+    } else {
+      return NextResponse.json({ error: 'credential or email required' }, { status: 400 });
     }
-
-    // Decode Google JWT (same as client-side parseJwt)
-    const payload = JSON.parse(
-      Buffer.from(credential.split('.')[1], 'base64').toString()
-    );
-
-    const { email, name, picture } = payload;
 
     if (!email) {
       return NextResponse.json({ error: 'Invalid credential — no email' }, { status: 400 });
@@ -29,8 +43,8 @@ export async function POST(request: NextRequest) {
       .upsert(
         {
           email,
-          name: name || email.split('@')[0],
-          picture: picture || null,
+          name,
+          picture,
           fingerprint: fingerprint || null,
         },
         { onConflict: 'email' }

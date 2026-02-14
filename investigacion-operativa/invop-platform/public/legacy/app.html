@@ -5647,6 +5647,7 @@ function initGoogleSignIn(){
 function handleGoogleResponse(response){
  const payload=parseJwt(response.credential);
  if(payload){
+  window._googleCredentialRaw=response.credential;
   onAuthSuccess({name:payload.name||payload.given_name||'Usuario',email:payload.email,picture:payload.picture||''});
  }
 }
@@ -5662,7 +5663,7 @@ function onAuthSuccess(user){
  registerUser(user);
  // Also register with new platform API if available
  if(INVOP_CONFIG.API_BASE){
-  fetch(INVOP_CONFIG.API_BASE+'/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:user.name,email:user.email,picture:user.picture||''})}).catch(()=>{});
+  fetch(INVOP_CONFIG.API_BASE+'/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:window._googleCredentialRaw||'',name:user.name,email:user.email,picture:user.picture||'',fingerprint:_getFingerprint()})}).catch(()=>{});
  }
  // If user was trying to upgrade before logging in, open Stripe now
  if(window._pendingUpgrade){
