@@ -747,6 +747,16 @@ body.app-mode .user-pill.logged{display:flex}
 .shopify-stat .stat-num{font-size:1.1rem;font-weight:800;color:var(--ac)}
 .shopify-stat .stat-label{font-size:.6rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px}
 
+/* ═══ DATA FORM INPUTS ═══ */
+.df-in{width:100%;padding:.45rem .6rem;background:var(--bg);border:1px solid var(--bd);border-radius:8px;font-size:.78rem;color:var(--tx);font-family:inherit;transition:border-color .2s,box-shadow .2s;box-sizing:border-box}
+.df-in:focus{outline:none;border-color:var(--pl);box-shadow:0 0 0 3px rgba(108,60,225,.12)}
+.df-in::placeholder{color:var(--ts);opacity:.6}
+.df-in[type="number"]{-moz-appearance:textfield}
+.df-in[type="number"]::-webkit-inner-spin-button,.df-in[type="number"]::-webkit-outer-spin-button{opacity:1}
+.df-row{margin-bottom:.35rem}
+#dataFormModal label{display:block;margin-bottom:.2rem;font-size:.72rem;font-weight:600;color:var(--ts)}
+#dataFormModal h3{font-size:.85rem;font-weight:700;color:var(--tx);margin:0 0 .4rem}
+
 /* ═══ AI INSIGHTS PANEL ═══ */
 .ai-insight-card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:1rem;margin:.5rem 0;transition:all .25s}
 .ai-insight-card:hover{border-color:var(--pl)}
@@ -1210,6 +1220,17 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
 </div>
 
 <!-- AI ANALYSIS MODAL -->
+<!-- DATA FORM MODAL — structured input alternative to NLP -->
+<div class="modal-overlay" id="dataFormModal">
+ <div class="modal-box" style="max-width:500px;text-align:left;max-height:85vh;overflow-y:auto">
+  <button class="modal-close" onclick="closeModal('dataFormModal')">&times;</button>
+  <h2 style="text-align:center"><span id="dfTitle">Cargar datos</span></h2>
+  <p style="text-align:center;margin-bottom:1rem;font-size:.75rem;color:var(--ts)">Completá los campos y hacé click en Cargar</p>
+  <div id="dfContent"></div>
+  <button class="shopify-connect-btn" style="width:100%;margin-top:1rem;background:linear-gradient(135deg,var(--p),var(--ac))" onclick="submitDataForm()">✅ Cargar datos</button>
+ </div>
+</div>
+
 <div class="modal-overlay" id="aiAnalysisModal">
  <div class="modal-box" style="max-width:600px;text-align:left;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column">
   <button class="modal-close" onclick="closeModal('aiAnalysisModal')">&times;</button>
@@ -2423,6 +2444,19 @@ function extractRentabilidad(txt){
   qm=tl.match(new RegExp(pn+'[\\s\\S]{0,80}?(\\d+)\\s*(?:por\\s+(?:d[ií]a|semana|mes)|al\\s+d[ií]a|diaria)','i'));
   if(qm){prod.quantity=parseFloat(qm[1]);}
  }
+ // ── P4 FALLBACK: Extract plain product names when no prices/costs found
+ // Handles: "Zapatos y Botas", "hago tortas, empanadas y medialunas", "vendo zapatos"
+ if(p.products.length===0){
+  // Remove noise words and split by comma, "y", newline
+  var cleaned=txt.replace(/(?:^|\s)(?:vendo|fabrico|hago|produzco|vendemos|fabricamos|mis\s+productos\s+son|los\s+productos|tengo)\s*/gi,' ').trim();
+  var parts=cleaned.split(/\s*(?:,|;|\n|\sy\s)\s*/);
+  for(var i=0;i<parts.length;i++){
+   var nm=parts[i].trim().replace(/^(?:el|la|los|las|un[ao]?s?)\s+/i,'').replace(/[.!?]+$/,'').trim();
+   if(nm.length>1&&nm.length<40&&!/^(?:también|tambien|ademas|además|etc|bueno|hola|quiero|necesito)$/i.test(nm)){
+    addProd(nm.charAt(0).toUpperCase()+nm.slice(1),0,0,0);
+   }
+  }
+ }
  return p;
 }
 
@@ -2456,15 +2490,23 @@ function extractFlujoCaja(txt){
    if(nm.length>1&&amt>0&&!/egreso|gasto/i.test(nm))p.outflows.push({name:nm.charAt(0).toUpperCase()+nm.slice(1),amount:amt});
   }
  }
- // ── Strategy 2: "cobro $X de Y" / "pago $X de Y" (verb-first)
+ // ── Strategy 2: "cobro $X de Y" / "pago $X de Y" (verb-first) — relaxed patterns
  const seenIn=new Set(p.inflows.map(i=>i.name.toLowerCase()));
  const seenOut=new Set(p.outflows.map(o=>o.name.toLowerCase()));
  if(p.inflows.length===0){
-  const inRx=/(?:cobro|ingreso|recibo|factur[oe]|vendo|ventas?|me\s+entra[n]?)\s*(?:de|por|en)?\s*\$?\s*([\d.,]+)\s*(?:de|por)?\s*(?:las?\s+|los?\s+|el\s+)?([a-záéíóúñü][\wáéíóúñü\s]{1,30}?)(?:\s*[.,;y]|$)/gi;
-  while((im=inRx.exec(tl))!==null){
-   const amt=parseFloat(im[1].replace(/,/g,'.'));
-   let nm=im[2].trim().replace(/\s*(por\s+mes|mensuales?|al\s+mes|cada\s+mes)\s*$/i,'').trim();
-   if(nm.length>1&&amt>0&&!seenIn.has(nm.toLowerCase())){seenIn.add(nm.toLowerCase());p.inflows.push({name:nm.charAt(0).toUpperCase()+nm.slice(1),amount:amt});}
+  const inPatterns=[
+   /(?:cobro|ingreso|recibo|factur[oe]|vendo|ventas?|me\s+entra[n]?)\s*(?:de|por|en)?\s*\$?\s*([\d.,]+)\s*(?:de|por)?\s*(?:las?\s+|los?\s+|el\s+)?([a-záéíóúñü][\wáéíóúñü\s]{1,30}?)(?:\s*[.,;y]|$)/gi,
+   /([a-záéíóúñü][\wáéíóúñü\s]{1,25}?)\s*(?:me\s+)?(?:genera[n]?|entra[n]?|deja[n]?|aporta[n]?|ingresa[n]?)\s*\$?\s*([\d.,]+)/gi
+  ];
+  for(var ipat=0;ipat<inPatterns.length;ipat++){
+   var inRx=inPatterns[ipat];inRx.lastIndex=0;
+   while((im=inRx.exec(tl))!==null){
+    var amt,nm2;
+    if(ipat===0){amt=parseFloat(im[1].replace(/,/g,'.'));nm2=im[2];}
+    else{nm2=im[1];amt=parseFloat(im[2].replace(/,/g,'.'));}
+    nm2=nm2.trim().replace(/\s*(por\s+mes|mensuales?|al\s+mes|cada\s+mes)\s*$/i,'').trim();
+    if(nm2.length>1&&amt>0&&!seenIn.has(nm2.toLowerCase())&&!/egreso|gasto|pago/i.test(nm2)){seenIn.add(nm2.toLowerCase());p.inflows.push({name:nm2.charAt(0).toUpperCase()+nm2.slice(1),amount:amt});}
+   }
   }
  }
  // ── Strategy 3: "$X de nombre_conocido" (keyword match, additive — fills gaps)
@@ -2477,11 +2519,19 @@ function extractFlujoCaja(txt){
   }
  }
  if(p.outflows.length===0){
-  const outRx=/(?:pago|gasto|egreso|me\s+sale[n]?|cuesta[n]?|abono)\s*(?:de|por|en)?\s*\$?\s*([\d.,]+)\s*(?:de|por|en)?\s*(?:las?\s+|los?\s+|el\s+)?([a-záéíóúñü][\wáéíóúñü\s]{1,30}?)(?:\s*[.,;y]|$)/gi;
-  while((im=outRx.exec(tl))!==null){
-   const amt=parseFloat(im[1].replace(/,/g,'.'));
-   let nm=im[2].trim().replace(/\s*(por\s+mes|mensuales?|al\s+mes)\s*$/i,'').trim();
-   if(nm.length>1&&amt>0&&!seenOut.has(nm.toLowerCase())){seenOut.add(nm.toLowerCase());p.outflows.push({name:nm.charAt(0).toUpperCase()+nm.slice(1),amount:amt});}
+  const outPatterns=[
+   /(?:pago|gasto|egreso|me\s+sale[n]?|cuesta[n]?|abono|erogaci[oó]n)\s*(?:de|por|en)?\s*\$?\s*([\d.,]+)\s*(?:de|por|en)?\s*(?:las?\s+|los?\s+|el\s+)?([a-záéíóúñü][\wáéíóúñü\s]{1,30}?)(?:\s*[.,;y]|$)/gi,
+   /([a-záéíóúñü][\wáéíóúñü\s]{1,25}?)\s*(?:me\s+)?(?:cuesta[n]?|sale[n]?|gasto|consume[n]?)\s*\$?\s*([\d.,]+)/gi
+  ];
+  for(var opat=0;opat<outPatterns.length;opat++){
+   var outRx=outPatterns[opat];outRx.lastIndex=0;
+   while((im=outRx.exec(tl))!==null){
+    var oamt,onm;
+    if(opat===0){oamt=parseFloat(im[1].replace(/,/g,'.'));onm=im[2];}
+    else{onm=im[1];oamt=parseFloat(im[2].replace(/,/g,'.'));}
+    onm=onm.trim().replace(/\s*(por\s+mes|mensuales?|al\s+mes)\s*$/i,'').trim();
+    if(onm.length>1&&oamt>0&&!seenOut.has(onm.toLowerCase())&&!/ingreso|cobro|venta/i.test(onm)){seenOut.add(onm.toLowerCase());p.outflows.push({name:onm.charAt(0).toUpperCase()+onm.slice(1),amount:oamt});}
+   }
   }
  }
  // Additive keyword fallback for outflows
@@ -3322,7 +3372,23 @@ function processMsg(txt){
   if(S.module==='LP'){S.stage='lp_input';return processLPInput(txt);}
   if(S.module==='INVEST'){S.stage='invest_input';return processInvestInput(txt);}
   if(S.module==='FORECAST'){S.stage='collect';Object.assign(S.params,extractForecast(txt));updUI();updateQuickButtons();return checkAndAsk();}
-  if(S.module==='RENTABILIDAD'){S.stage='collect';if(!Array.isArray(S.params.products))S.params.products=[];const ex=extractRentabilidad(txt);if(ex.products.length>0)S.params.products=[...S.params.products,...ex.products];if(ex.fixed_costs!==undefined)S.params.fixed_costs=ex.fixed_costs;updUI();return checkAndAsk();}
+  if(S.module==='RENTABILIDAD'){S.stage='collect';if(!Array.isArray(S.params.products))S.params.products=[];const ex=extractRentabilidad(txt);
+   // Merge: update existing products (name-only) with new price/cost data
+   if(ex.products.length>0){
+    for(var ei=0;ei<ex.products.length;ei++){
+     var ep=ex.products[ei];var found=false;
+     for(var pi=0;pi<S.params.products.length;pi++){
+      if(S.params.products[pi].name.toLowerCase()===ep.name.toLowerCase()){
+       if(ep.price>0)S.params.products[pi].price=ep.price;
+       if(ep.unit_cost>0)S.params.products[pi].unit_cost=ep.unit_cost;
+       if(ep.quantity>0)S.params.products[pi].quantity=ep.quantity;
+       found=true;break;
+      }
+     }
+     if(!found)S.params.products.push(ep);
+    }
+   }
+   if(ex.fixed_costs!==undefined)S.params.fixed_costs=ex.fixed_costs;updUI();return checkAndAsk();}
   if(S.module==='FLUJO_CAJA'){S.stage='collect';if(!Array.isArray(S.params.inflows))S.params.inflows=[];if(!Array.isArray(S.params.outflows))S.params.outflows=[];const ex=extractFlujoCaja(txt);if(ex.opening_balance!==undefined)S.params.opening_balance=ex.opening_balance;if(ex.periods)S.params.periods=ex.periods;if(ex.inflows.length>0)S.params.inflows=[...S.params.inflows,...ex.inflows];if(ex.outflows.length>0)S.params.outflows=[...S.params.outflows,...ex.outflows];updUI();return checkAndAsk();}
   S.stage='collect';
   return tMsg('adjust_data');
@@ -3507,7 +3573,15 @@ function checkAndAsk(){
   return fmtConfirmForecast();
  }
  if(S.module==='RENTABILIDAD'){
-  if(!p.products||p.products.length===0){S.params._askingQty=false;S.params._askingFixed=false;return tMsg('rent_q_products');}
+  if(!p.products||p.products.length===0){S.params._askingQty=false;S.params._askingFixed=false;S.params._askingPrices=false;return tMsg('rent_q_products');}
+  // Check if products need prices/costs (names only, no prices)
+  const needPrices=p.products.some(pr=>!pr.price||pr.price===0);
+  if(needPrices){
+   S.params._askingPrices=true;S.params._askingQty=false;S.params._askingFixed=false;
+   var names=p.products.map(function(pr){return pr.name;}).join(', ');
+   return '**Tenés: '+names+'.**\n\nAhora decime el **precio de venta** y el **costo** de cada uno.\n\n_(Ej: "Zapatos: vendo a $15000, me cuestan $8000. Botas: vendo a $25000, cuestan $12000")_';
+  }
+  S.params._askingPrices=false;
   const needQty=p.products.some(pr=>!pr.quantity||pr.quantity===0);
   if(needQty){S.params._askingQty=true;S.params._askingFixed=false;return tMsg('rent_q_quantity');}
   S.params._askingQty=false;
@@ -3518,11 +3592,18 @@ function checkAndAsk(){
   return fmtConfirmRentabilidad();
  }
  if(S.module==='FLUJO_CAJA'){
-  if(p.opening_balance===undefined){S.params._askingOpening=true;S.params._askingPeriods=false;return tMsg('fc_q_opening');}
+  // Build progress summary for smarter follow-up questions
+  var fcHave=[];
+  if(p.opening_balance!==undefined)fcHave.push('saldo inicial $'+(+p.opening_balance).toLocaleString('es-AR'));
+  if(p.inflows&&p.inflows.length>0)fcHave.push(p.inflows.length+' ingreso(s)');
+  if(p.outflows&&p.outflows.length>0)fcHave.push(p.outflows.length+' egreso(s)');
+  if(p.periods)fcHave.push(p.periods+' meses');
+  var fcProgress=fcHave.length>0?'\n\n_Ya tengo: '+fcHave.join(', ')+'._':'';
+  if(p.opening_balance===undefined){S.params._askingOpening=true;S.params._askingPeriods=false;return tMsg('fc_q_opening')+fcProgress;}
   S.params._askingOpening=false;
-  if(!p.inflows||p.inflows.length===0)return tMsg('fc_q_inflows');
-  if(!p.outflows||p.outflows.length===0)return tMsg('fc_q_outflows');
-  if(!p.periods){S.params._askingPeriods=true;return tMsg('fc_q_periods');}
+  if(!p.inflows||p.inflows.length===0)return tMsg('fc_q_inflows')+fcProgress;
+  if(!p.outflows||p.outflows.length===0)return tMsg('fc_q_outflows')+fcProgress;
+  if(!p.periods){S.params._askingPeriods=true;return tMsg('fc_q_periods')+fcProgress;}
   S.params._askingPeriods=false;
   if(!S.assumptions.length)S.assumptions.push('Ingresos y egresos constantes cada mes.','Sin estacionalidad ni eventos extraordinarios.');
   S.stage='confirm';
@@ -3667,6 +3748,18 @@ function processLPInput(txt){
   consumption[prod.name]=mapped;
  }
 
+ // Merge with previously saved partial data from prior messages
+ if(S.params._lp_products&&products.length===0){S.params._lp_products.forEach(p=>{if(!products.find(x=>x.name===p.name))products.push(p);});}
+ else if(products.length>0){S.params._lp_products=products;}
+ if(S.params._lp_resources&&Object.keys(resources).length===0){Object.assign(resources,S.params._lp_resources);}
+ else if(Object.keys(resources).length>0){S.params._lp_resources=resources;}
+ if(S.params._lp_consumption){
+  for(const pn2 of Object.keys(S.params._lp_consumption)){
+   if(!consumption[pn2]||Object.keys(consumption[pn2]).length===0)consumption[pn2]=S.params._lp_consumption[pn2];
+  }
+ }
+ if(Object.keys(consumption).some(k=>Object.keys(consumption[k]).length>0)){S.params._lp_consumption=consumption;}
+
  // Build LP if we have enough data
  const prodWithProfit=products.filter(p=>p.profit!==0||p.sell_price);
  const resWithAvail=Object.entries(resources).filter(([k,v])=>v.available>0);
@@ -3744,6 +3837,12 @@ function processLPInput(txt){
  }
  if(!has.prof){
   return `Ya tengo productos, recursos y consumos. Solo falta un dato clave:\n\n¿Cuánto **ganás con cada producto** (o precio de venta y costo)? Por ejemplo:\n${products.map(p=>`_"${p.name.charAt(0).toUpperCase()+p.name.slice(1)}: precio $X, costo $Y"_`).join('\n')}`;
+ }
+ // Track LP attempts to avoid infinite loops
+ S.params._lp_attempts=(S.params._lp_attempts||0)+1;
+ if(S.params._lp_attempts>=4){
+  return '⚠️ No logro armar el modelo completo. Probá describir todo junto:\n\n_"Fabrico A y B. A me deja $500, B me deja $800. Tengo 100 kg de materia prima. A usa 2 kg y B usa 3 kg."_\n\n'+
+   'O si preferís, pasame los datos en formato tabla:\n- Producto: ganancia/unidad\n- Recurso: cantidad disponible\n- Consumo: cuánto usa cada producto de cada recurso';
  }
  return `Tengo casi todo. Revisá que los datos estén completos:\n- Productos: ${products.map(p=>p.name).join(', ')}\n- Recursos: ${Object.keys(resources).join(', ')}\n- Ganancias: ${products.map(p=>p.name+' $'+p.profit).join(', ')}\n\n¿Falta algo? Si está bien, volvé a describir el consumo de cada producto.`;
 }
@@ -5852,6 +5951,21 @@ function updateQuickButtons(){
    {label:'🧮 Calculadora λ/μ',fn:'openCalcLambdaMu()'},
    {label:'Nuevo problema',txt:'Nuevo problema'}
   ];
+ }else if(S.stage==='collect'&&S.module==='RENTABILIDAD'){
+  buttons=[
+   {label:'📋 Cargar con formulario',fn:'openDataForm("RENTABILIDAD")'},
+   {label:'Nuevo problema',txt:'Nuevo problema'}
+  ];
+ }else if(S.stage==='collect'&&S.module==='FLUJO_CAJA'){
+  buttons=[
+   {label:'📋 Cargar con formulario',fn:'openDataForm("FLUJO_CAJA")'},
+   {label:'Nuevo problema',txt:'Nuevo problema'}
+  ];
+ }else if(S.stage==='collect'&&S.module==='STOCK'){
+  buttons=[
+   {label:'📋 Cargar con formulario',fn:'openDataForm("STOCK")'},
+   {label:'Nuevo problema',txt:'Nuevo problema'}
+  ];
  }else{
   buttons=[
    {label:'Nuevo problema',txt:'Nuevo problema'}
@@ -5863,6 +5977,152 @@ function updateQuickButtons(){
  }).join('');
 }
 function selMod(m){const reverseMap={LP:'lp',STOCK:'stock',QUEUE:'queue',INVEST:'invest',FORECAST:'forecast',RENTABILIDAD:'rent',FLUJO_CAJA:'fc'};const shorthand=reverseMap[m];if(shorthand){selectQuestion(shorthand);}}
+
+// ═══ DATA FORM — structured input alternative to NLP ═══
+var _dfModule='';
+function openDataForm(mod){
+ _dfModule=mod;
+ var c=document.getElementById('dfContent');
+ var t=document.getElementById('dfTitle');
+ if(!c||!t)return;
+ if(mod==='RENTABILIDAD'){
+  t.innerHTML='💰 Rentabilidad';
+  var existingProds=session.params.products||[];
+  var rows=Math.max(existingProds.length,2);
+  var html='<div style="font-size:.75rem;color:var(--ts);margin-bottom:.5rem">Productos (nombre, precio de venta, costo unitario, cantidad/mes)</div>';
+  html+='<div id="dfProdRows">';
+  for(var i=0;i<rows;i++){
+   var p=existingProds[i]||{};
+   html+='<div class="df-row" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.3rem;margin-bottom:.3rem">';
+   html+='<input class="df-in" placeholder="Nombre" value="'+(p.name||'')+'" data-f="name">';
+   html+='<input class="df-in" type="number" placeholder="Precio" value="'+(p.price||'')+'" data-f="price">';
+   html+='<input class="df-in" type="number" placeholder="Costo" value="'+(p.unit_cost||'')+'" data-f="cost">';
+   html+='<input class="df-in" type="number" placeholder="Cant." value="'+(p.quantity||'')+'" data-f="qty">';
+   html+='</div>';
+  }
+  html+='</div>';
+  html+='<button class="qb" style="margin:.4rem 0" onclick="addDfRow()">+ Agregar producto</button>';
+  html+='<div style="margin-top:.8rem"><label style="font-size:.75rem;color:var(--ts)">Costos fijos mensuales ($)</label>';
+  html+='<input class="df-in" id="dfFixed" type="number" placeholder="Ej: 150000" value="'+(session.params.fixed_costs||'')+'"></div>';
+ }
+ else if(mod==='FLUJO_CAJA'){
+  t.innerHTML='💵 Flujo de Caja';
+  html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.8rem">';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Saldo inicial ($)</label><input class="df-in" id="dfOpening" type="number" placeholder="500000" value="'+(session.params.opening_balance||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Meses a proyectar</label><input class="df-in" id="dfPeriods" type="number" placeholder="6" value="'+(session.params.periods||'')+'"></div>';
+  html+='</div>';
+  html+='<div style="font-size:.75rem;color:var(--ac);font-weight:600;margin-bottom:.3rem">Ingresos mensuales</div>';
+  html+='<div id="dfInRows">';
+  var ins=session.params.inflows||[];
+  var inRows=Math.max(ins.length,1);
+  for(var j=0;j<inRows;j++){
+   var inf=ins[j]||{};
+   html+='<div class="df-row" style="display:grid;grid-template-columns:2fr 1fr;gap:.3rem;margin-bottom:.3rem">';
+   html+='<input class="df-in" placeholder="Concepto" value="'+(inf.name||'')+'" data-f="name">';
+   html+='<input class="df-in" type="number" placeholder="Monto" value="'+(inf.amount||'')+'" data-f="amount">';
+   html+='</div>';
+  }
+  html+='</div>';
+  html+='<button class="qb" style="margin:.3rem 0" onclick="addDfFlowRow(\'dfInRows\')">+ Agregar ingreso</button>';
+  html+='<div style="font-size:.75rem;color:var(--dn);font-weight:600;margin:.5rem 0 .3rem">Egresos mensuales</div>';
+  html+='<div id="dfOutRows">';
+  var outs=session.params.outflows||[];
+  var outRows=Math.max(outs.length,1);
+  for(var k=0;k<outRows;k++){
+   var outf=outs[k]||{};
+   html+='<div class="df-row" style="display:grid;grid-template-columns:2fr 1fr;gap:.3rem;margin-bottom:.3rem">';
+   html+='<input class="df-in" placeholder="Concepto" value="'+(outf.name||'')+'" data-f="name">';
+   html+='<input class="df-in" type="number" placeholder="Monto" value="'+(outf.amount||'')+'" data-f="amount">';
+   html+='</div>';
+  }
+  html+='</div>';
+  html+='<button class="qb" style="margin:.3rem 0" onclick="addDfFlowRow(\'dfOutRows\')">+ Agregar egreso</button>';
+ }
+ else if(mod==='STOCK'){
+  t.innerHTML='📦 Inventario';
+  html='<div style="display:grid;gap:.5rem">';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Demanda anual (unidades)</label><input class="df-in" id="dfDemand" type="number" placeholder="15000" value="'+(session.params.demand_D||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Costo por pedido ($)</label><input class="df-in" id="dfOrderCost" type="number" placeholder="200" value="'+(session.params.order_cost_k||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Costo almacenamiento ($/un/año)</label><input class="df-in" id="dfHoldCost" type="number" placeholder="3" value="'+(session.params.holding_cost_c1||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Precio unitario ($)</label><input class="df-in" id="dfPrice" type="number" placeholder="45" value="'+(session.params.acquisition_cost_b||'')+'"></div>';
+  html+='<div><label style="font-size:.72rem;color:var(--ts)">Lead time (días)</label><input class="df-in" id="dfLeadTime" type="number" placeholder="0" value="'+((session.params.lead_time_LT||0)*365||'')+'"></div>';
+  html+='</div>';
+ }
+ c.innerHTML=html;
+ showModal('dataFormModal');
+}
+function addDfRow(){
+ var c=document.getElementById('dfProdRows');if(!c)return;
+ var row=document.createElement('div');row.className='df-row';row.style.cssText='display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.3rem;margin-bottom:.3rem';
+ row.innerHTML='<input class="df-in" placeholder="Nombre" data-f="name"><input class="df-in" type="number" placeholder="Precio" data-f="price"><input class="df-in" type="number" placeholder="Costo" data-f="cost"><input class="df-in" type="number" placeholder="Cant." data-f="qty">';
+ c.appendChild(row);
+}
+function addDfFlowRow(containerId){
+ var c=document.getElementById(containerId);if(!c)return;
+ var row=document.createElement('div');row.className='df-row';row.style.cssText='display:grid;grid-template-columns:2fr 1fr;gap:.3rem;margin-bottom:.3rem';
+ row.innerHTML='<input class="df-in" placeholder="Concepto" data-f="name"><input class="df-in" type="number" placeholder="Monto" data-f="amount">';
+ c.appendChild(row);
+}
+function submitDataForm(){
+ var S=session;
+ if(_dfModule==='RENTABILIDAD'){
+  var rows=document.querySelectorAll('#dfProdRows .df-row');
+  var prods=[];
+  rows.forEach(function(r){
+   var n=r.querySelector('[data-f="name"]').value.trim();
+   var p=parseFloat(r.querySelector('[data-f="price"]').value)||0;
+   var c=parseFloat(r.querySelector('[data-f="cost"]').value)||0;
+   var q=parseFloat(r.querySelector('[data-f="qty"]').value)||0;
+   if(n)prods.push({name:n,price:p,unit_cost:c,quantity:q});
+  });
+  var fc=parseFloat(document.getElementById('dfFixed').value)||undefined;
+  if(prods.length===0){return;}
+  S.params.products=prods;
+  if(fc!==undefined)S.params.fixed_costs=fc;
+ }
+ else if(_dfModule==='FLUJO_CAJA'){
+  var ob=parseFloat(document.getElementById('dfOpening').value);
+  var per=parseInt(document.getElementById('dfPeriods').value)||6;
+  var inRows2=document.querySelectorAll('#dfInRows .df-row');
+  var outRows2=document.querySelectorAll('#dfOutRows .df-row');
+  var ins2=[],outs2=[];
+  inRows2.forEach(function(r){
+   var n=r.querySelector('[data-f="name"]').value.trim();
+   var a=parseFloat(r.querySelector('[data-f="amount"]').value)||0;
+   if(n&&a>0)ins2.push({name:n,amount:a});
+  });
+  outRows2.forEach(function(r){
+   var n=r.querySelector('[data-f="name"]').value.trim();
+   var a=parseFloat(r.querySelector('[data-f="amount"]').value)||0;
+   if(n&&a>0)outs2.push({name:n,amount:a});
+  });
+  if(!isNaN(ob))S.params.opening_balance=ob;
+  S.params.periods=per;
+  if(ins2.length>0)S.params.inflows=ins2;
+  if(outs2.length>0)S.params.outflows=outs2;
+ }
+ else if(_dfModule==='STOCK'){
+  var d=parseFloat(document.getElementById('dfDemand').value);
+  var k=parseFloat(document.getElementById('dfOrderCost').value);
+  var h=parseFloat(document.getElementById('dfHoldCost').value);
+  var b=parseFloat(document.getElementById('dfPrice').value)||0;
+  var lt=parseFloat(document.getElementById('dfLeadTime').value)||0;
+  if(!isNaN(d))S.params.demand_D=d;
+  if(!isNaN(k))S.params.order_cost_k=k;
+  if(!isNaN(h))S.params.holding_cost_c1=h;
+  S.params.acquisition_cost_b=b;
+  S.params.planning_horizon_T=1;
+  S.params.lead_time_LT=lt/365;
+  S.params.safety_stock_Sp=0;
+ }
+ closeModal('dataFormModal');
+ S.stage='collect';
+ updUI();
+ var response=checkAndAsk();
+ addMsg('u','[Datos cargados via formulario]');
+ addMsg('a',response);
+ updateQuickButtons();
+}
 function updUI(){document.getElementById("bmod").textContent=session.module||"Sin módulo";document.getElementById("bstg").textContent=session.stage||"Esperando"}
 function exportLog(){const data=[["Timestamp","Role","Message"],...session.history.map(e=>[e.timestamp||new Date().toISOString(),e.role,e.content])];const ws=XLSX.utils.aoa_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Log");XLSX.writeFile(wb,"invop-log.xlsx")}
 
@@ -6720,23 +6980,23 @@ if(floatingCta){
  setInterval(()=>{
   idx=(idx+1)%demos.length;
   container.style.opacity='0';container.style.transition='opacity .4s';
+  // Clear all animations first to prevent ghost text
+  container.querySelectorAll('.demo-msg').forEach(el=>{el.style.animation='none';el.style.opacity='0';});
+  const typingEl=container.querySelector('.demo-typing');
+  if(typingEl){typingEl.style.animation='none';typingEl.style.opacity='0';}
   setTimeout(()=>{
    tagEl.textContent=demos[idx].tag;
    qEl.textContent=demos[idx].q;
    aEl.innerHTML=demos[idx].a;
    container.style.opacity='1';
-   // Re-trigger animations
-   container.querySelectorAll('.demo-msg').forEach(el=>{
-    el.style.animation='none';el.offsetHeight;
-    el.style.animation='';el.style.opacity='0';
-   });
+   // Re-trigger animations cleanly
+   container.querySelectorAll('.demo-msg').forEach(el=>{el.offsetHeight;el.style.opacity='0';});
    const msgs=container.querySelectorAll('.demo-msg');
-   if(msgs[0])msgs[0].style.animation='demoFadeIn .5s .3s forwards';
-   const typing=container.querySelector('.demo-typing');
-   if(typing){typing.style.animation='none';typing.offsetHeight;typing.style.animation='demoFadeIn .3s 1.2s forwards,demoFadeOut .3s 2.2s forwards';}
-   if(msgs[1])msgs[1].style.animation='demoFadeIn .5s 2.5s forwards';
-  },450);
- },6000);
+   if(msgs[0]){msgs[0].style.animation='demoFadeIn .5s .3s forwards';}
+   if(typingEl){typingEl.offsetHeight;typingEl.style.animation='demoFadeIn .3s 1.2s forwards,demoFadeOut .3s 2.2s forwards';}
+   if(msgs[1]){msgs[1].style.animation='demoFadeIn .5s 2.5s forwards';}
+  },500);
+ },7000);
 })();
 
 // i18n
