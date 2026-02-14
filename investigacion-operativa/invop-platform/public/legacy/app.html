@@ -7720,25 +7720,118 @@ function renderSidebarInsights(analysis){
 }
 
 function loadAIModule(moduleName,inputsStr){
- // Select the module in the sidebar
- selMod(moduleName);
- // Store inputs for when the solver needs them
- try{
-  window._aiPrefill=JSON.parse(inputsStr);
- }catch(e){window._aiPrefill=null;}
- // Send a message to the chat describing the AI analysis
- var desc={
-  STOCK:'La AI analizó tu tienda Shopify y recomienda optimizar tu inventario. Los datos ya están cargados — confirmá para resolver.',
-  FORECAST:'La AI preparó una serie temporal de tus ventas. Confirmá para generar el pronóstico.',
-  RENTABILIDAD:'La AI mapeó tus productos con precios, costos y volúmenes. Confirmá para analizar rentabilidad.',
-  FLUJO_CAJA:'La AI armó tu flujo de ingresos y egresos. Confirmá para proyectar los próximos meses.'
- };
- var msg=desc[moduleName]||'Datos cargados desde Shopify AI. Confirmá para resolver.';
- // Inject into chat as if user typed it
- setTimeout(function(){
-  var textarea=document.querySelector('.iarea textarea');
-  if(textarea){textarea.value='[AI Shopify] '+msg;send();}
- },300);
+ // Parse AI inputs
+ var inputs;
+ try{inputs=JSON.parse(inputsStr);}catch(e){inputs=null;}
+ if(!inputs){addMsg('a','❌ Error al cargar datos del análisis.');return;}
+
+ // Close AI modal
+ closeModal('aiAnalysisModal');
+
+ // Setup UI: select module in sidebar, hide welcome, show chat
+ document.querySelectorAll('.mcard').forEach(function(c){c.classList.remove('sel');});
+ var card=document.querySelector('[data-m="'+moduleName+'"]');
+ if(card)card.classList.add('sel');
+ var wel=document.getElementById('wel');
+ if(wel){wel.style.display='none';}
+ var bb=document.getElementById('backBtn');
+ if(bb)bb.style.display='inline-block';
+ var msgs=document.getElementById('msgs');
+ if(msgs)msgs.querySelectorAll('.msg').forEach(function(m){m.remove();});
+
+ // Map AI engine data → solver params format
+ var params={};
+ var summary='';
+
+ if(moduleName==='STOCK'&&inputs.D){
+  params={
+   demand_D:inputs.D,
+   order_cost_k:inputs.K,
+   holding_cost_c1:inputs.h,
+   acquisition_cost_b:inputs.cost||0,
+   planning_horizon_T:1,
+   lead_time_LT:inputs.L||0,
+   safety_stock_Sp:0
+  };
+  summary='**📦 Inventario — '+( inputs.product_name||'Producto')+' **\n\n'+
+   '| Parámetro | Valor |\n|---|---|\n'+
+   '| Demanda anual | '+(+inputs.D).toLocaleString('es-AR')+' un |\n'+
+   '| Costo de pedido | $'+(+inputs.K).toLocaleString('es-AR')+' |\n'+
+   '| Costo almacenamiento | $'+r2(inputs.h)+'/un/año |\n'+
+   '| Lead time | '+(inputs.L||0)+' días |\n\n'+
+   '_Datos de Shopify AI._ ¿Confirmo y resuelvo? Escribí **sí** o ajustá algún dato.';
+ }
+ else if(moduleName==='RENTABILIDAD'&&inputs.products){
+  params={
+   products:inputs.products.map(function(p){
+    return{name:p.name,price:p.price_venta||p.price||0,unit_cost:p.cost||p.unit_cost||0,quantity:p.volume||p.quantity||0};
+   }),
+   fixed_costs:inputs.fixed_costs||0
+  };
+  var nProds=params.products.length;
+  var withCost=params.products.filter(function(p){return p.unit_cost>0;}).length;
+  summary='**💰 Rentabilidad — '+nProds+' productos**\n\n'+
+   '| Producto | Precio | Costo | Cantidad |\n|---|---|---|---|\n'+
+   params.products.slice(0,8).map(function(p){
+    return'| '+p.name+' | $'+r2(p.price)+' | '+(p.unit_cost>0?'$'+r2(p.unit_cost):'❌ falta')+' | '+r0(p.quantity)+' |';
+   }).join('\n')+
+   (nProds>8?'\n| ... y '+(nProds-8)+' más | | | |':'')+'\n\n'+
+   (inputs.fixed_costs?'Costos fijos: $'+(+inputs.fixed_costs).toLocaleString('es-AR')+'/mes\n\n':'')+
+   (withCost<nProds?'⚠️ '+withCost+'/'+nProds+' con costos. Resultado aproximado.\n\n':'')+
+   '_Datos de Shopify AI._ ¿Confirmo y resuelvo? Escribí **sí** o ajustá algún dato.';
+ }
+ else if(moduleName==='FORECAST'&&inputs.timeseries){
+  params={
+   timeseries:inputs.timeseries,
+   method:'ALL',
+   periods_ahead:3
+  };
+  summary='**📈 Pronóstico de Ventas**\n\n'+
+   'Serie temporal: '+inputs.timeseries.length+' meses de datos.\n'+
+   'Valores: '+inputs.timeseries.map(function(v){return '$'+r0(v);}).join(', ')+'\n\n'+
+   'Método: Todos (SMA, SES, Regresión) — compara y elige el mejor.\n\n'+
+   '_Datos de Shopify AI._ ¿Confirmo y resuelvo? Escribí **sí** o ajustá algún dato.';
+ }
+ else if(moduleName==='FLUJO_CAJA'){
+  params={
+   opening_balance:inputs.opening_balance||0,
+   periods:inputs.periods||6,
+   inflows:inputs.inflows||[],
+   outflows:inputs.outflows||[]
+  };
+  var totalIn=(params.inflows||[]).reduce(function(s,i){return s+(+(i.amount||0));},0);
+  var totalOut=(params.outflows||[]).reduce(function(s,o){return s+(+(o.amount||0));},0);
+  summary='**💵 Flujo de Caja — '+params.periods+' meses**\n\n'+
+   '| Concepto | Monto/mes |\n|---|---|\n'+
+   '| Saldo inicial | $'+(+params.opening_balance).toLocaleString('es-AR')+' |\n'+
+   params.inflows.map(function(i){return'| ✅ '+i.name+' | +$'+(+i.amount).toLocaleString('es-AR')+' |';}).join('\n')+'\n'+
+   params.outflows.map(function(o){return'| ❌ '+o.name+' | -$'+(+o.amount).toLocaleString('es-AR')+' |';}).join('\n')+'\n'+
+   '| **Neto mensual** | **$'+(totalIn-totalOut).toLocaleString('es-AR')+'** |\n\n'+
+   '_Datos de Shopify AI._ ¿Confirmo y resuelvo? Escribí **sí** o ajustá algún dato.';
+ }
+ else{
+  addMsg('a','⚠️ Módulo '+moduleName+' no tiene datos suficientes del análisis.');
+  return;
+ }
+
+ // Load params into session and go to confirm stage
+ session.module=moduleName;
+ session.params=params;
+ session.stage='confirm';
+ session.assumptions=[];
+ session.solution=null;
+ session.history=session.history||[];
+ updUI();
+ updateStepper();
+
+ // Show confirmation in chat
+ addMsg('u','[Shopify AI → '+moduleName+']');
+ addMsg('a',mdToHtml(summary));
+ updateQuickButtons();
+
+ // Focus input for quick "sí"
+ var inp=document.getElementById('inp');
+ if(inp){inp.focus();inp.placeholder='Escribí "sí" para resolver o ajustá datos...';}
 }
 
 // F5: SHOPIFY CALLBACK HANDLER (after OAuth redirect back)
