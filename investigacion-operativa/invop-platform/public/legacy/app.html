@@ -4702,17 +4702,17 @@ const SENS_DEFS={
   {key:'alpha',label:'Alpha (α) suavización',unit:'',abs:0.15,step:0.05,fmt:v=>v.toFixed(2)}
  ],
  RENTABILIDAD:[
-  {key:'_price_pct',label:'Variación precios (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'price'},
-  {key:'_cost_pct',label:'Variación costos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'unit_cost'},
-  {key:'_qty_pct',label:'Variación volumen (%)',unit:'%',abs:50,step:5,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'quantity'},
+  {key:'_price_pct',label:'Variación precios (%)',unit:'',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'price'},
+  {key:'_cost_pct',label:'Variación costos (%)',unit:'',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'unit_cost'},
+  {key:'_qty_pct',label:'Variación volumen (%)',unit:'',abs:50,step:5,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'products',scaleField:'quantity'},
   {key:'fixed_costs',label:'Costos fijos',unit:'$',pct:50}
  ],
  FLUJO_CAJA:[
   {key:'opening_balance',label:'Saldo inicial',unit:'$',pct:50},
-  {key:'_inflows_pct',label:'Variación ingresos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'inflows',scaleField:'amount'},
-  {key:'_outflows_pct',label:'Variación egresos (%)',unit:'%',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'outflows',scaleField:'amount'},
-  {key:'dso',label:'DSO — plazo cobro',unit:'días',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'},
-  {key:'dpo',label:'DPO — plazo pago',unit:'días',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'}
+  {key:'_inflows_pct',label:'Variación ingresos (%)',unit:'',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'inflows',scaleField:'amount'},
+  {key:'_outflows_pct',label:'Variación egresos (%)',unit:'',abs:30,step:1,fmt:v=>v>0?'+'+v+'%':v+'%',isScale:true,scaleArr:'outflows',scaleField:'amount'},
+  {key:'dso',label:'DSO — plazo cobro',unit:'',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'},
+  {key:'dpo',label:'DPO — plazo pago',unit:'',abs:30,step:5,fmt:v=>Math.max(0,Math.round(v))+' días'}
  ]
 };
 
