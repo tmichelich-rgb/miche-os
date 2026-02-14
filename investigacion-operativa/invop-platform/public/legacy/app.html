@@ -1202,11 +1202,11 @@ Margen = min(FCₜ) / promedio(Egresosₜ)</div>
 
 <!-- AI ANALYSIS MODAL -->
 <div class="modal-overlay" id="aiAnalysisModal">
- <div class="modal-box" style="max-width:600px;text-align:left">
+ <div class="modal-box" style="max-width:600px;text-align:left;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column">
   <button class="modal-close" onclick="closeModal('aiAnalysisModal')">&times;</button>
-  <h2 style="text-align:center"><span>AI Analysis</span></h2>
-  <p style="text-align:center;margin-bottom:1rem">Analizando tu data de Shopify con Claude AI...</p>
-  <div id="aiAnalysisContent">
+  <h2 style="text-align:center;flex-shrink:0"><span>AI Analysis</span></h2>
+  <p style="text-align:center;margin-bottom:1rem;flex-shrink:0">Analizando tu data de Shopify con Claude AI...</p>
+  <div id="aiAnalysisContent" style="flex:1;overflow-y:auto">
    <div style="text-align:center;padding:2rem">
     <div class="avatar-ring" style="width:40px;height:40px;margin:0 auto 1rem;border:3px solid var(--ac);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></div>
     <p style="font-size:.85rem;color:var(--ts)">Procesando productos, órdenes e inventario...</p>
@@ -7957,11 +7957,29 @@ function renderSmartAnalysis(analysis){
  // ── MODULE CARDS WITH CHECKLIST ──────────────────────
  if(analysis.modules){
   var icons={STOCK:'📦',FORECAST:'📈',RENTABILIDAD:'💰',FLUJO_CAJA:'💵'};
-  var dataLabels={
-   RENTABILIDAD:{has:['Productos','Precios de venta'],optional:['Costos unitarios','Costos fijos','Volumen de ventas']},
-   STOCK:{has:['Productos','Niveles de inventario'],optional:['Demanda (ventas)','Costo por pedido','Costo de almacenamiento']},
-   FORECAST:{has:[],optional:['Historial de ventas (min 3 meses)']},
-   FLUJO_CAJA:{has:['Productos'],optional:['Ingresos mensuales','Costos fijos','Balance inicial']}
+  // Build checklist per module: all data items with status
+  var moduleChecklist={
+   RENTABILIDAD:[
+    {label:'Productos',field:null},
+    {label:'Precios de venta',field:null},
+    {label:'Costos unitarios',field:'cost_per_item'},
+    {label:'Costos fijos mensuales',field:'fixed_costs'},
+    {label:'Volumen de ventas',field:'demand_data'}
+   ],
+   STOCK:[
+    {label:'Productos',field:null},
+    {label:'Niveles de inventario',field:null},
+    {label:'Costo por pedido',field:'ordering_cost'},
+    {label:'Costo de almacenamiento',field:'holding_cost_pct'}
+   ],
+   FORECAST:[
+    {label:'Historial de ventas (min 3 meses)',field:'sales_history'}
+   ],
+   FLUJO_CAJA:[
+    {label:'Productos',field:null},
+    {label:'Ingresos mensuales',field:'demand_data'},
+    {label:'Costos fijos',field:'fixed_costs'}
+   ]
   };
 
   for(var k=0;k<analysis.modules.length;k++){
@@ -7976,30 +7994,21 @@ function renderSmartAnalysis(analysis){
    html+='<span class="insight-tag '+tagClass+'">'+mod.priority+'</span>';
    html+='</div>';
 
-   // Checklist
-   var labels=dataLabels[mod.module]||{has:[],optional:[]};
-   html+='<div style="margin:.3rem 0;font-size:.7rem">';
-   // Items we have
-   for(var h=0;h<labels.has.length;h++){
-    html+='<div style="color:#22c55e;padding:.1rem 0">✓ '+labels.has[h]+'</div>';
-   }
-   // Items that are needed/missing
-   for(var n=0;n<mod.needs.length;n++){
-    var needLabel=mod.needs[n].replace(/_/g,' ').replace('cost per item','Costos unitarios').replace('ordering cost','Costo por pedido').replace('holding cost pct','Costo de almacenamiento').replace('fixed costs','Costos fijos').replace('demand data','Datos de ventas').replace('sales history','Historial de ventas');
-    html+='<div style="color:#ef4444;padding:.1rem 0">✗ '+needLabel+'</div>';
-   }
-   // Optional items we DO have (from labels.optional minus needs)
-   var needFields=mod.needs||[];
-   for(var o=0;o<labels.optional.length;o++){
-    var isNeeded=false;
-    for(var nn=0;nn<needFields.length;nn++){
-     if(labels.optional[o].toLowerCase().indexOf(needFields[nn].replace(/_/g,' '))>=0)isNeeded=true;
+   // Checklist — each item is ✓ or ✗ based on needs array
+   var checklist=moduleChecklist[mod.module]||[];
+   if(checklist.length>0){
+    html+='<div style="margin:.3rem 0;font-size:.7rem">';
+    for(var ci=0;ci<checklist.length;ci++){
+     var item=checklist[ci];
+     var isMissing=item.field&&mod.needs.indexOf(item.field)>=0;
+     if(isMissing){
+      html+='<div style="color:#ef4444;padding:.1rem 0">✗ '+item.label+'</div>';
+     } else {
+      html+='<div style="color:#22c55e;padding:.1rem 0">✓ '+item.label+'</div>';
+     }
     }
-    if(!isNeeded){
-     html+='<div style="color:#22c55e;padding:.1rem 0">✓ '+labels.optional[o]+'</div>';
-    }
+    html+='</div>';
    }
-   html+='</div>';
 
    html+='<p style="font-size:.73rem;color:var(--ts);margin:.3rem 0">'+mod.insights+'</p>';
 
