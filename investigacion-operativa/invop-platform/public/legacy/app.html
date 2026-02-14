@@ -7864,30 +7864,136 @@ function showShopifyProductsInsight(products){
 }
 
 function autoAnalyzeShopify(){
- if(!window._shopifyProducts||!window._shopifyProducts.length){
-  alert('No hay productos cargados todavía.');
-  return;
+ var store=getShopifyStore();
+ var u=getUser();
+ if(!store){alert('Conectá tu tienda Shopify primero.');return;}
+
+ // Get any saved user costs
+ var savedCosts={};
+ try{savedCosts=JSON.parse(localStorage.getItem('invop_user_costs'))||{};}catch(e){}
+
+ showModal('aiAnalysisModal');
+ var el=document.getElementById('aiAnalysisContent');
+ if(el)el.innerHTML='<div style="text-align:center;padding:2rem"><div style="width:40px;height:40px;border:3px solid var(--ac);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto"></div><p style="margin-top:1rem;color:var(--ts);font-size:.8rem">Analizando tu tienda...</p></div>';
+
+ fetch(INVOP_CONFIG.API_BASE+'/api/ai/analyze',{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({
+   store_id:store.store_id||null,
+   user_id:(u&&u.email)||'tmichelich@gmail.com',
+   modules:['STOCK','FORECAST','RENTABILIDAD','FLUJO_CAJA'],
+   user_costs:Object.keys(savedCosts).length?savedCosts:null
+  })
+ })
+ .then(function(r){return r.json();})
+ .then(function(data){
+  if(data.error){throw new Error(data.error);}
+  window._lastAnalysis=data.analysis;
+  renderSmartAnalysis(data.analysis);
+ })
+ .catch(function(err){
+  if(el)el.innerHTML='<div style="text-align:center;padding:1.5rem"><p style="color:var(--dn);font-size:.85rem">Error: '+err.message+'</p><button class="shopify-connect-btn" style="margin-top:1rem;max-width:200px" onclick="closeModal(\'aiAnalysisModal\')">Cerrar</button></div>';
+ });
+}
+
+function renderSmartAnalysis(analysis){
+ var el=document.getElementById('aiAnalysisContent');
+ if(!el)return;
+ var html='';
+
+ // General insights
+ html+='<div class="ai-insight-card" style="border-color:var(--ac)"><h5>📊 Tu tienda Shopify</h5><p>'+analysis.general_insights+'</p></div>';
+
+ // Missing data — show cost form
+ if(analysis.missing_data&&analysis.missing_data.length>0){
+  html+='<div class="ai-insight-card" style="border-color:#f59e0b"><h5>⚡ Datos que necesitamos</h5>';
+  html+='<p style="font-size:.75rem;color:var(--ts);margin-bottom:.5rem">Completá estos campos para desbloquear todos los módulos:</p>';
+  html+='<div style="display:flex;flex-direction:column;gap:.4rem">';
+  for(var i=0;i<analysis.missing_data.length;i++){
+   var md=analysis.missing_data[i];
+   if(md.input_type==='single_value'){
+    html+='<div style="display:flex;align-items:center;gap:.5rem">';
+    html+='<label style="font-size:.72rem;color:var(--ts);min-width:180px">'+md.description+'</label>';
+    html+='<input type="number" id="cost_'+md.field+'" placeholder="0" style="flex:1;padding:.3rem .5rem;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.75rem;max-width:100px">';
+    html+='</div>';
+   }
+  }
+  // Per-product costs
+  var needsProductCost=analysis.missing_data.some(function(m){return m.field==='cost_per_item';});
+  if(needsProductCost&&analysis.product_summary){
+   html+='<details style="margin-top:.3rem"><summary style="font-size:.72rem;color:var(--ac);cursor:pointer">Costos por producto (opcional)</summary>';
+   html+='<div style="max-height:200px;overflow-y:auto;margin-top:.3rem">';
+   for(var j=0;j<Math.min(analysis.product_summary.length,15);j++){
+    var p=analysis.product_summary[j];
+    html+='<div style="display:flex;align-items:center;gap:.4rem;padding:.2rem 0;border-bottom:1px solid var(--bd)">';
+    html+='<span style="font-size:.7rem;color:var(--ts);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.title+' ($'+p.price+')</span>';
+    html+='<input type="number" id="pcost_'+p.shopify_id+'" placeholder="costo" style="width:70px;padding:.2rem .4rem;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:.7rem">';
+    html+='</div>';
+   }
+   html+='</div></details>';
+  }
+  html+='<button class="shopify-connect-btn" style="margin-top:.5rem;background:linear-gradient(135deg,#f59e0b,#f97316);font-size:.72rem;padding:.4rem" onclick="saveCostsAndReanalyze()">Guardar costos y re-analizar</button>';
+  html+='</div></div>';
  }
- // Build a summary and feed it to the chat
- var products=window._shopifyProducts;
- var summary=products.slice(0,20).map(function(p){
-  var line=p.title;
-  if(p.price)line+=' — $'+p.price;
-  if(p.cost_per_item)line+=' (costo: $'+p.cost_per_item+')';
-  if(p.inventory_quantity!==undefined)line+=' [stock: '+p.inventory_quantity+']';
-  return line;
- }).join('\\n');
 
- var msg='Tengo estos productos en mi tienda Shopify:\\n'+summary;
- if(products.length>20)msg+='\\n... y '+(products.length-20)+' más.';
- msg+='\\n\\nAnalizá mi rentabilidad y decime qué productos convienen más.';
+ // Module cards
+ if(analysis.modules){
+  var icons={STOCK:'📦',FORECAST:'📈',RENTABILIDAD:'💰',FLUJO_CAJA:'💵'};
+  for(var k=0;k<analysis.modules.length;k++){
+   var mod=analysis.modules[k];
+   var tagClass=mod.priority==='high'?'high':mod.priority==='medium'?'medium':'low';
+   var borderColor=mod.priority==='high'?'var(--ac)':mod.priority==='medium'?'#f59e0b':'var(--bd)';
+   html+='<div class="ai-insight-card" style="border-color:'+borderColor+'">';
+   html+='<div style="display:flex;justify-content:space-between;align-items:center"><h5>'+(icons[mod.module]||'🔧')+' '+mod.module+'</h5>';
+   html+='<span class="insight-tag '+tagClass+'">'+mod.priority+'</span></div>';
+   html+='<p>'+mod.insights+'</p>';
+   if(mod.inputs&&mod.needs.length===0){
+    html+='<button class="shopify-connect-btn" style="margin-top:.4rem;background:linear-gradient(135deg,var(--p),var(--ac));font-size:.72rem;padding:.35rem .8rem" onclick="closeModal(\'aiAnalysisModal\');loadAIModule(\''+mod.module+'\','+JSON.stringify(JSON.stringify(mod.inputs))+')">Resolver ahora</button>';
+   } else if(mod.needs.length>0){
+    html+='<p style="font-size:.68rem;color:#f59e0b;margin-top:.3rem">Falta: '+mod.needs.join(', ')+'</p>';
+   }
+   html+='</div>';
+  }
+ }
 
- // Enter RENTABILIDAD module and send
- selMod('RENTABILIDAD');
- setTimeout(function(){
-  var textarea=document.querySelector('.iarea textarea');
-  if(textarea){textarea.value=msg;send();}
- },300);
+ // Recommendations
+ if(analysis.recommendations&&analysis.recommendations.length){
+  html+='<div class="ai-insight-card"><h5>💡 Recomendaciones</h5>';
+  for(var r=0;r<analysis.recommendations.length;r++){
+   html+='<p style="font-size:.75rem;color:var(--ts);margin:.3rem 0;padding-left:.5rem;border-left:2px solid var(--ac)">'+analysis.recommendations[r]+'</p>';
+  }
+  html+='</div>';
+ }
+
+ html+='<button class="shopify-connect-btn" style="margin-top:.8rem;background:var(--card);border:1px solid var(--bd);color:var(--tx)" onclick="closeModal(\'aiAnalysisModal\')">Cerrar</button>';
+ el.innerHTML=html;
+ renderSidebarInsights(analysis);
+}
+
+function saveCostsAndReanalyze(){
+ var costs={};
+ // Single values
+ var fields=['ordering_cost','holding_cost_pct','fixed_costs'];
+ for(var i=0;i<fields.length;i++){
+  var inp=document.getElementById('cost_'+fields[i]);
+  if(inp&&inp.value)costs[fields[i]]=parseFloat(inp.value);
+ }
+ // Per-product costs
+ if(window._lastAnalysis&&window._lastAnalysis.product_summary){
+  for(var j=0;j<window._lastAnalysis.product_summary.length;j++){
+   var p=window._lastAnalysis.product_summary[j];
+   var pinp=document.getElementById('pcost_'+p.shopify_id);
+   if(pinp&&pinp.value){
+    if(!costs[p.shopify_id])costs[p.shopify_id]={};
+    costs[p.shopify_id]={cost:parseFloat(pinp.value)};
+   }
+  }
+ }
+ // Save for future
+ localStorage.setItem('invop_user_costs',JSON.stringify(costs));
+ // Re-analyze with costs
+ autoAnalyzeShopify();
 }
 
 console.log('[INVOP AI] Bloque F loaded — Shopify + AI + Plans integration active.');

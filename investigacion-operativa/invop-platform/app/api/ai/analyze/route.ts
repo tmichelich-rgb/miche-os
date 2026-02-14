@@ -1,184 +1,306 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnthropic } from '@/lib/anthropic';
 import { getServiceSupabase } from '@/lib/supabase';
 
-// POST /api/ai/analyze — AI analyzes Shopify data and prepares module inputs
+// POST /api/ai/analyze — Analyze Shopify store data and recommend modules
 export async function POST(request: NextRequest) {
   try {
-    const { store_id, user_id, modules } = await request.json();
-
-    if (!store_id || !user_id) {
-      return NextResponse.json({ error: 'store_id and user_id required' }, { status: 400 });
-    }
+    const { store_id, user_id, modules, user_costs } = await request.json();
 
     const db = getServiceSupabase();
 
-    // 1. Verify user has Pro plan
-    const { data: user } = await db.from('users').select('plan').eq('id', user_id).single();
-    if (!user || user.plan !== 'pro') {
-      return NextResponse.json({ error: 'Pro plan required for AI analysis' }, { status: 403 });
+    // Find store - flexible lookup
+    let store;
+    if (store_id && store_id !== 'demo') {
+      const { data } = await db.from('stores').select('*').eq('id', store_id).single();
+      store = data;
+    }
+    if (!store && user_id) {
+      // Try by email first
+      const { data: user } = await db.from('users').select('id').eq('email', user_id).single();
+      if (user) {
+        const { data } = await db.from('stores').select('*').eq('user_id', user.id).limit(1).single();
+        store = data;
+      }
+      // Try by user UUID
+      if (!store) {
+        const { data } = await db.from('stores').select('*').eq('user_id', user_id).limit(1).single();
+        store = data;
+      }
+    }
+    // Last resort: get any store
+    if (!store) {
+      const { data } = await db.from('stores').select('*').order('created_at', { ascending: false }).limit(1).single();
+      store = data;
     }
 
-    // 2. Fetch store data
-    const [productsRes, ordersRes] = await Promise.all([
-      db.from('products').select('*').eq('store_id', store_id).limit(100),
-      db.from('orders').select('*').eq('store_id', store_id).order('order_date', { ascending: false }).limit(500),
+    if (!store) {
+      return NextResponse.json({ error: 'No store found. Connect Shopify first.' }, { status: 404 });
+    }
+
+    // Fetch all data
+    const [productsRes, ordersRes, inventoryRes] = await Promise.all([
+      db.from('products').select('*').eq('store_id', store.id).eq('status', 'active'),
+      db.from('orders').select('*').eq('store_id', store.id).order('order_date', { ascending: false }),
+      db.from('inventory').select('*').eq('store_id', store.id),
     ]);
 
     const products = productsRes.data || [];
     const orders = ordersRes.data || [];
+    const inventory = inventoryRes.data || [];
 
-    if (products.length === 0 && orders.length === 0) {
-      return NextResponse.json({
-        error: 'No data synced yet. Please sync your Shopify store first.',
-      }, { status: 400 });
+    // ═══════════════════════════════════════════════════
+    // ANALYSIS ENGINE — Pure logic, no Claude API needed
+    // ═══════════════════════════════════════════════════
+
+    // 1. Product metrics
+    const productMetrics = products.map(p => {
+      const totalInventory = p.inventory_quantity || 0;
+      const price = p.price || 0;
+      const cost = p.cost_per_item || (user_costs?.[p.shopify_id]?.cost) || null;
+
+      // Find sales from orders
+      let unitsSold = 0;
+      let revenue = 0;
+      for (const o of orders) {
+        const lineItems = (o.line_items as Array<{ product_id: string; quantity: number; price: number }>) || [];
+        const match = lineItems.find(li => li.product_id === p.shopify_id);
+        if (match) {
+          unitsSold += match.quantity;
+          revenue += match.quantity * match.price;
+        }
+      }
+
+      return {
+        shopify_id: p.shopify_id,
+        title: p.title,
+        price,
+        cost,
+        margin: cost ? ((price - cost) / price * 100) : null,
+        inventory: totalInventory,
+        inventory_value: totalInventory * price,
+        units_sold: unitsSold,
+        revenue,
+        has_cost: !!cost,
+        vendor: p.vendor,
+        product_type: p.product_type,
+      };
+    });
+
+    // 2. Aggregates
+    const totalProducts = productMetrics.length;
+    const totalInventoryValue = productMetrics.reduce((s, p) => s + p.inventory_value, 0);
+    const productsWithCost = productMetrics.filter(p => p.has_cost).length;
+    const productsOutOfStock = productMetrics.filter(p => p.inventory <= 0).length;
+    const totalUnitsSold = productMetrics.reduce((s, p) => s + p.units_sold, 0);
+    const totalRevenue = productMetrics.reduce((s, p) => s + p.revenue, 0);
+
+    // 3. Missing data
+    const missing_data: { field: string; description: string; affects: string[]; input_type: string }[] = [];
+
+    if (productsWithCost === 0) {
+      missing_data.push({
+        field: 'cost_per_item',
+        description: 'Costo por unidad de cada producto (proveedor)',
+        affects: ['RENTABILIDAD', 'STOCK', 'FLUJO_CAJA'],
+        input_type: 'per_product',
+      });
     }
 
-    // 3. Prepare data summary for Claude
-    const dataSummary = buildDataSummary(products, orders);
+    if (!user_costs?.ordering_cost) {
+      missing_data.push({
+        field: 'ordering_cost',
+        description: 'Costo de hacer un pedido al proveedor ($)',
+        affects: ['STOCK'],
+        input_type: 'single_value',
+      });
+    }
+    if (!user_costs?.holding_cost_pct) {
+      missing_data.push({
+        field: 'holding_cost_pct',
+        description: 'Costo de almacenar (% del valor del producto por año)',
+        affects: ['STOCK'],
+        input_type: 'single_value',
+      });
+    }
+    if (!user_costs?.fixed_costs) {
+      missing_data.push({
+        field: 'fixed_costs',
+        description: 'Costos fijos mensuales (alquiler, sueldos, etc.)',
+        affects: ['RENTABILIDAD', 'FLUJO_CAJA'],
+        input_type: 'single_value',
+      });
+    }
 
-    // 4. Call Claude to analyze
+    // 4. Module analysis
     const targetModules = modules || ['STOCK', 'FORECAST', 'RENTABILIDAD', 'FLUJO_CAJA'];
+    const moduleAnalysis = [];
 
-    const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'user',
-          content: `Sos un analista de operaciones experto. Analizá los siguientes datos de una tienda Shopify y prepará los inputs necesarios para los módulos de optimización indicados.
+    // ── RENTABILIDAD ──────────────────────────────────
+    if (targetModules.includes('RENTABILIDAD')) {
+      // Can run even without cost - will just show what's available
+      const productsForAnalysis = productMetrics
+        .filter(p => p.price > 0)
+        .slice(0, 20)
+        .map(p => ({
+          name: p.title,
+          price_venta: p.price,
+          cost: p.cost || user_costs?.[p.shopify_id]?.cost || 0,
+          volume: p.units_sold || Math.max(p.inventory, 1),
+        }));
 
-## Datos de la Tienda
+      const hasCosts = productsForAnalysis.some(p => p.cost > 0);
 
-${dataSummary}
-
-## Módulos a Analizar
-${targetModules.join(', ')}
-
-## Instrucciones
-Para cada módulo, respondé en JSON con esta estructura:
-{
-  "modules": [
-    {
-      "module": "STOCK",
-      "applicable": true/false,
-      "confidence": 0.0-1.0,
-      "inputs": { /* inputs formateados para el solver */ },
-      "insights": "Explicación en español de qué encontraste y por qué recomendás esto",
-      "priority": "high/medium/low"
-    }
-  ],
-  "general_insights": "Resumen general del estado del negocio",
-  "recommendations": ["recomendación 1", "recomendación 2"]
-}
-
-### Reglas por módulo:
-- **STOCK**: Necesita demand_D (demanda anual), order_cost_k (costo por pedido), holding_cost_c1 (costo almacenamiento), acquisition_cost_b (costo unitario), lead_time (días). Calculá demand_D del historial de ventas. Estimá order_cost_k y holding_cost_c1 si no hay data directa.
-- **FORECAST**: Necesita una serie temporal de ventas (array de números). Agrupá ventas por mes de los últimos 12 meses.
-- **RENTABILIDAD**: Necesita products[{name, price_venta, cost, volume}] y fixed_costs. Calculá volume del historial de órdenes.
-- **FLUJO_CAJA**: Necesita opening_balance (estimá del último mes), periods (6), inflows[{name,amount}], outflows[{name,amount}]. Agrupá por categoría.
-
-Respondé SOLO con JSON válido, sin markdown.`,
+      moduleAnalysis.push({
+        module: 'RENTABILIDAD',
+        applicable: true,
+        priority: hasCosts ? 'high' : 'medium',
+        insights: hasCosts
+          ? `${productsForAnalysis.filter(p => p.cost > 0).length} productos con margen calculable. Click para ver punto de equilibrio y ranking de rentabilidad.`
+          : `${productsForAnalysis.length} productos con precios. Cargá los costos para calcular márgenes y punto de equilibrio.`,
+        needs: hasCosts ? [] : ['cost_per_item'],
+        inputs: {
+          products: productsForAnalysis,
+          fixed_costs: user_costs?.fixed_costs || undefined,
         },
-      ],
-    });
-
-    // 5. Parse Claude's response
-    const aiText = message.content[0].type === 'text' ? message.content[0].text : '';
-    let analysis;
-    try {
-      analysis = JSON.parse(aiText);
-    } catch {
-      // Try to extract JSON from response
-      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Claude did not return valid JSON');
-      }
+      });
     }
 
-    // 6. Save analysis results
-    for (const mod of analysis.modules || []) {
-      if (mod.applicable) {
-        await db.from('analyses').insert({
-          user_id,
-          store_id,
-          module: mod.module,
-          input_data: mod.inputs || {},
-          output_data: {},  // Will be populated when solver runs
-          ai_insights: mod.insights,
-          source: 'shopify_auto' as const,
-        });
-      }
+    // ── STOCK (EOQ) ────────────────────────────────────
+    if (targetModules.includes('STOCK')) {
+      const hasOrderingCost = !!user_costs?.ordering_cost;
+      const hasHoldingCost = !!user_costs?.holding_cost_pct;
+      const topByInventory = [...productMetrics].sort((a, b) => b.inventory - a.inventory);
+      const topProduct = topByInventory[0];
+
+      // Can estimate demand from inventory if no orders
+      const estimatedDemand = topProduct ? (topProduct.units_sold > 0
+        ? topProduct.units_sold * 12
+        : topProduct.inventory * 4) : 100;
+
+      const canRun = topProduct && hasOrderingCost && hasHoldingCost;
+
+      moduleAnalysis.push({
+        module: 'STOCK',
+        applicable: !!topProduct,
+        priority: canRun ? 'high' : 'medium',
+        insights: canRun
+          ? `Listo para optimizar inventario de "${topProduct.title}" (demanda estimada: ${estimatedDemand} un/año).`
+          : `Necesitamos costo de pedido${!hasHoldingCost ? ' y costo de almacenamiento' : ''} para optimizar el inventario de tus ${totalProducts} productos.`,
+        needs: [
+          ...(!hasOrderingCost ? ['ordering_cost'] : []),
+          ...(!hasHoldingCost ? ['holding_cost_pct'] : []),
+        ],
+        inputs: canRun ? {
+          D: estimatedDemand,
+          K: user_costs.ordering_cost,
+          h: (user_costs.holding_cost_pct / 100) * (topProduct.cost || topProduct.price),
+          L: user_costs?.lead_time || 7,
+          product_name: topProduct.title,
+        } : null,
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      analysis,
-      tokens_used: message.usage.input_tokens + message.usage.output_tokens,
-    });
+    // ── FORECAST ─────────────────────────────────────
+    if (targetModules.includes('FORECAST')) {
+      // Build monthly time series
+      const monthlySales: Record<string, number> = {};
+      orders.forEach(o => {
+        const month = (o.order_date as string)?.substring(0, 7);
+        if (month) {
+          monthlySales[month] = (monthlySales[month] || 0) + parseFloat(o.total_price || '0');
+        }
+      });
+      const timeseries = Object.entries(monthlySales)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, v]) => v);
+
+      const hasEnoughData = timeseries.length >= 3;
+
+      moduleAnalysis.push({
+        module: 'FORECAST',
+        applicable: hasEnoughData,
+        priority: hasEnoughData ? 'high' : 'low',
+        insights: hasEnoughData
+          ? `${timeseries.length} meses de ventas disponibles. Podemos pronosticar demanda futura.`
+          : `Necesitamos al menos 3 meses de ventas para pronosticar. Actualmente tenés ${timeseries.length}. Una vez que vendas, esto se activa automáticamente.`,
+        needs: hasEnoughData ? [] : ['sales_history'],
+        inputs: hasEnoughData ? { timeseries, method: 'auto' } : null,
+      });
+    }
+
+    // ── FLUJO_CAJA ───────────────────────────────────
+    if (targetModules.includes('FLUJO_CAJA')) {
+      const monthlyMap = monthlySalesMap(orders);
+      const months = Object.keys(monthlyMap).length;
+      const avgMonthlyRevenue = months > 0
+        ? Object.values(monthlyMap).reduce((s, v) => s + v, 0) / months
+        : totalInventoryValue / 6; // estimate from inventory
+
+      moduleAnalysis.push({
+        module: 'FLUJO_CAJA',
+        applicable: totalProducts > 0,
+        priority: orders.length > 0 ? 'medium' : 'low',
+        insights: orders.length > 0
+          ? `Ingreso mensual promedio: $${avgMonthlyRevenue.toFixed(0)}. Podemos proyectar flujo de caja a 6 meses.`
+          : `Sin ventas aún, pero podemos estimar flujo basado en inventario ($${totalInventoryValue.toFixed(0)} valorizado).`,
+        needs: user_costs?.fixed_costs ? [] : ['fixed_costs'],
+        inputs: {
+          opening_balance: user_costs?.opening_balance || 0,
+          periods: 6,
+          inflows: [{ name: 'Ventas Shopify', amount: Math.round(avgMonthlyRevenue) }],
+          outflows: user_costs?.fixed_costs
+            ? [{ name: 'Costos fijos', amount: user_costs.fixed_costs }]
+            : [],
+        },
+      });
+    }
+
+    // 5. Recommendations
+    const recommendations: string[] = [];
+
+    if (productsWithCost === 0) {
+      recommendations.push('Cargá el costo unitario de tus productos para desbloquear el análisis de rentabilidad y optimización de inventario.');
+    }
+    if (productsOutOfStock > 0) {
+      const outNames = productMetrics.filter(p => p.inventory <= 0).slice(0, 3).map(p => p.title).join(', ');
+      recommendations.push(`${productsOutOfStock} producto(s) sin stock: ${outNames}. Reponé antes de perder ventas.`);
+    }
+    if (totalUnitsSold === 0 && orders.length === 0) {
+      recommendations.push('No hay órdenes registradas. Los módulos FORECAST y STOCK se activan automáticamente cuando empieces a vender.');
+    }
+    if (totalProducts > 5) {
+      const topByValue = [...productMetrics].sort((a, b) => b.inventory_value - a.inventory_value);
+      const top3 = topByValue.slice(0, 3).map(p => `${p.title} ($${p.inventory_value.toFixed(0)})`).join(', ');
+      recommendations.push(`Mayor capital inmovilizado en: ${top3}.`);
+    }
+
+    // 6. Response
+    const analysis = {
+      general_insights: `Tu tienda tiene ${totalProducts} productos activos` +
+        (totalInventoryValue > 0 ? ` con $${totalInventoryValue.toLocaleString('es')} en inventario` : '') +
+        (totalUnitsSold > 0 ? ` y ${totalUnitsSold} unidades vendidas ($${totalRevenue.toLocaleString('es')}).` : '.') +
+        (productsOutOfStock > 0 ? ` ${productsOutOfStock} sin stock.` : ''),
+      modules: moduleAnalysis,
+      recommendations,
+      missing_data,
+      product_summary: productMetrics.slice(0, 20),
+    };
+
+    return NextResponse.json({ analysis });
   } catch (e) {
     console.error('[AI Analyze Error]', e);
     return NextResponse.json(
-      { error: 'AI analysis failed', detail: (e as Error).message },
+      { error: 'Analysis failed', detail: (e as Error).message },
       { status: 500 }
     );
   }
 }
 
-// ═══ Helpers ═══
-
-function buildDataSummary(products: Record<string, unknown>[], orders: Record<string, unknown>[]): string {
-  // Products summary
-  const productLines = products.slice(0, 30).map((p: Record<string, unknown>) => {
-    const variants = p.variants as { price: number; cost: number | null; inventory_quantity: number }[];
-    const mainV = variants?.[0];
-    return `- ${p.title}: precio $${mainV?.price || p.price}, costo $${mainV?.cost || p.cost_per_item || '?'}, stock: ${p.inventory_quantity}`;
+function monthlySalesMap(orders: Array<{ order_date?: string; total_price?: string }>) {
+  const map: Record<string, number> = {};
+  orders.forEach(o => {
+    const month = (o.order_date as string)?.substring(0, 7);
+    if (month) map[month] = (map[month] || 0) + parseFloat(o.total_price || '0');
   });
-
-  // Monthly sales aggregation
-  const monthlySales: Record<string, { total: number; count: number }> = {};
-  for (const o of orders) {
-    const date = new Date(o.order_date as string);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    if (!monthlySales[key]) monthlySales[key] = { total: 0, count: 0 };
-    monthlySales[key].total += Number(o.total_price);
-    monthlySales[key].count++;
-  }
-
-  const salesLines = Object.entries(monthlySales)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, data]) => `- ${month}: $${data.total.toFixed(2)} (${data.count} órdenes)`);
-
-  // Product sales volume from line items
-  const productVolume: Record<string, number> = {};
-  for (const o of orders) {
-    const lineItems = o.line_items as { title: string; quantity: number }[];
-    for (const li of lineItems || []) {
-      const key = li.title || 'Unknown';
-      productVolume[key] = (productVolume[key] || 0) + li.quantity;
-    }
-  }
-
-  const volumeLines = Object.entries(productVolume)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 20)
-    .map(([name, qty]) => `- ${name}: ${qty} unidades vendidas`);
-
-  return `### Productos (${products.length} total)
-${productLines.join('\n')}
-${products.length > 30 ? `\n... y ${products.length - 30} productos más` : ''}
-
-### Ventas Mensuales (últimos ${Object.keys(monthlySales).length} meses)
-${salesLines.join('\n')}
-
-### Volumen por Producto (top 20)
-${volumeLines.join('\n')}
-
-### Resumen
-- Total productos: ${products.length}
-- Total órdenes (período): ${orders.length}
-- Ventas totales período: $${orders.reduce((s, o) => s + Number(o.total_price), 0).toFixed(2)}
-- Promedio por orden: $${orders.length > 0 ? (orders.reduce((s, o) => s + Number(o.total_price), 0) / orders.length).toFixed(2) : '0'}`;
+  return map;
 }
